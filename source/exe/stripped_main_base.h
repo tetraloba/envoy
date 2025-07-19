@@ -61,6 +61,7 @@ public:
             CreateInstanceFunction create_instance);
 
   void runServer() {
+    ENVOY_LOG(info, "tetraloba: stripped_main_base:63 runServer() called!");
     ASSERT(options_.mode() == Server::Mode::Serve);
     server_->run();
   }

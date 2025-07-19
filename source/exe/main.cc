@@ -14,6 +14,7 @@
  * after setting up command line options.
  */
 int main(int argc, char** argv) {
+  ENVOY_LOG(info, "tetraloba: main.cc:63 main() called!");
 #ifdef WIN32
   Envoy::ServiceBase service;
   if (!Envoy::ServiceBase::TryRunAsService(service)) {
