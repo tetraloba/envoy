@@ -75,6 +75,7 @@ MainCommonBase::MainCommonBase(const Server::Options& options, Event::TimeSystem
 }
 
 bool MainCommonBase::run() {
+  ENVOY_LOG(warn, "tetraloba: main_common.cc:63 runServer() called!");
   // Avoid returning from inside switch cases to minimize uncovered lines
   // while avoiding gcc warnings by hitting the final return.
   bool ret = false;
@@ -153,6 +154,7 @@ std::string MainCommon::hotRestartVersion(bool hot_restart_enabled) {
 }
 
 int MainCommon::main(int argc, char** argv, PostServerHook hook) {
+  ENVOY_LOG(warn, "tetraloba: main_common.cc:157 MainCommon::main() called!");
 #ifndef __APPLE__
   // absl::Symbolize mostly works without this, but this improves corner case
   // handling, such as running in a chroot jail.
