@@ -1,9 +1,12 @@
 #include "source/extensions/load_balancing_policies/least_response_time/least_response_time_lb.h"
 
+#include "source/common/common/logger.h"
+
 namespace Envoy {
 namespace Upstream {
 
 double LeastResponseTimeLoadBalancer::hostWeight(const Host& host) const {
+  ENVOY_LOG_MISC(warn, "tetraloba: least_response_time_lb.cc:8: hostWeight() called!");
   // This method is called to calculate the dynamic weight as following when all load balancing
   // weights are not equal:
   //
@@ -39,6 +42,7 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& host) const {
         static_cast<double>(host.weight()) / std::pow(active_request_value, active_request_bias_);
   }
 
+  ENVOY_LOG_MISC(info, "tetraloba: least_response_time_lb.cc:8: hostWeight(): host_weight: " + std::to_string(host_weight));
   if (!noHostsAreInSlowStart()) {
     return applySlowStartFactor(host_weight, host);
   } else {
@@ -56,6 +60,7 @@ HostConstSharedPtr LeastResponseTimeLoadBalancer::unweightedHostPeek(const HostV
 
 HostConstSharedPtr LeastResponseTimeLoadBalancer::unweightedHostPick(const HostVector& hosts_to_use,
                                                                 const HostsSource&) {
+  ENVOY_LOG_MISC(info, "tetraloba: least_response_time_lb.cc:61: unweightedHostPick() called!");
   HostSharedPtr candidate_host = nullptr;
 
   switch (selection_method_) {
@@ -73,6 +78,7 @@ HostConstSharedPtr LeastResponseTimeLoadBalancer::unweightedHostPick(const HostV
 }
 
 HostSharedPtr LeastResponseTimeLoadBalancer::unweightedHostPickFullScan(const HostVector& hosts_to_use) {
+  ENVOY_LOG_MISC(info, "tetraloba: least_response_time_lb.cc:80: unweightedHostPickFullScan() called!");
   HostSharedPtr candidate_host = nullptr;
 
   size_t num_hosts_known_tied_for_least = 0;
@@ -117,6 +123,7 @@ HostSharedPtr LeastResponseTimeLoadBalancer::unweightedHostPickFullScan(const Ho
 }
 
 HostSharedPtr LeastResponseTimeLoadBalancer::unweightedHostPickNChoices(const HostVector& hosts_to_use) {
+  ENVOY_LOG_MISC(info, "tetraloba: least_response_time_lb.cc:125: unweightedHostPickNChoices() called!");
   HostSharedPtr candidate_host = nullptr;
 
   for (uint32_t choice_idx = 0; choice_idx < choice_count_; ++choice_idx) {
