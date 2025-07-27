@@ -6,7 +6,7 @@ namespace Envoy {
 namespace Upstream {
 
 /**
- * Weighted Least Request load balancer.
+ * Weighted Least Response Time load balancer.
  *
  * In a normal setup when all hosts have the same weight it randomly picks up N healthy hosts
  * (where N is specified in the LB configuration) and compares number of active requests. Technique

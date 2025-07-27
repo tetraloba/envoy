@@ -1,4 +1,4 @@
-#include "source/extensions/load_balancing_policies/least_request/least_request_lb.h"
+#include "source/extensions/load_balancing_policies/least_response_time/least_response_time_lb.h"
 
 namespace Envoy {
 namespace Upstream {
@@ -59,10 +59,10 @@ HostConstSharedPtr LeastResponseTimeLoadBalancer::unweightedHostPick(const HostV
   HostSharedPtr candidate_host = nullptr;
 
   switch (selection_method_) {
-  case envoy::extensions::load_balancing_policies::least_request::v3::LeastResponseTime::FULL_SCAN:
+  case envoy::extensions::load_balancing_policies::least_response_time::v3::LeastResponseTime::FULL_SCAN:
     candidate_host = unweightedHostPickFullScan(hosts_to_use);
     break;
-  case envoy::extensions::load_balancing_policies::least_request::v3::LeastResponseTime::N_CHOICES:
+  case envoy::extensions::load_balancing_policies::least_response_time::v3::LeastResponseTime::N_CHOICES:
     candidate_host = unweightedHostPickNChoices(hosts_to_use);
     break;
   default:
