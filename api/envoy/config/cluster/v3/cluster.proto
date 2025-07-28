@@ -1158,7 +1158,7 @@ message Cluster {
     LeastRequestLbConfig least_request_lb_config = 37;
 
     // Optional configuration for the LeastRequest load balancing policy. added by tetraloba.
-    LeastResponseTimeLbConfig least_response_time_lb_config = 48;
+    LeastResponseTimeLbConfig least_response_time_lb_config = 1048;
 
     // Optional configuration for the RoundRobin load balancing policy.
     RoundRobinLbConfig round_robin_lb_config = 56;
