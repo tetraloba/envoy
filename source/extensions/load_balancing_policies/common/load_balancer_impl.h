@@ -12,6 +12,7 @@
 #include "envoy/common/random_generator.h"
 #include "envoy/config/cluster/v3/cluster.pb.h"
 #include "envoy/extensions/load_balancing_policies/least_request/v3/least_request.pb.h"
+#include "envoy/extensions/load_balancing_policies/least_response_time/v3/least_response_time.pb.h"
 #include "envoy/extensions/load_balancing_policies/random/v3/random.pb.h"
 #include "envoy/extensions/load_balancing_policies/round_robin/v3/round_robin.pb.h"
 #include "envoy/runtime/runtime.h"
