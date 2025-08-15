@@ -6,7 +6,7 @@ namespace Envoy {
 namespace Upstream {
 
 double LeastResponseTimeLoadBalancer::hostWeight(const Host& host) const {
-  ENVOY_LOG_MISC(warn, "tetraloba: least_response_time_lb.cc:8: hostWeight() called!");
+  ENVOY_LOG_MISC(info, "tetraloba: least_response_time_lb.cc:8: hostWeight() called!");
   // This method is called to calculate the dynamic weight as following when all load balancing
   // weights are not equal:
   //
@@ -52,6 +52,7 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& host) const {
 
 HostConstSharedPtr LeastResponseTimeLoadBalancer::unweightedHostPeek(const HostVector&,
                                                                 const HostsSource&) {
+  ENVOY_LOG_MISC(info, "tetraloba: least_response_time_lb.cc:55: unweightedHostPeek() called!");
   // LeastResponseTimeLoadBalancer can not do deterministic preconnecting, because
   // any other thread might select the least-requested-host between preconnect and
   // host-pick, and change the rq_active checks.

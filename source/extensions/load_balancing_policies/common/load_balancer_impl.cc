@@ -906,6 +906,7 @@ EdfLoadBalancerBase::EdfLoadBalancerBase(
 }
 
 void EdfLoadBalancerBase::initialize() {
+  ENVOY_LOG_MISC(info, "tetraloba: load_balancer_impl.h:908: EdfLoadBalancerBase::initialize() called");
   for (uint32_t priority = 0; priority < priority_set_.hostSetsPerPriority().size(); ++priority) {
     refresh(priority);
   }

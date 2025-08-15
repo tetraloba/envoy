@@ -4,6 +4,7 @@ namespace Envoy {
 namespace Upstream {
 
 double LeastRequestLoadBalancer::hostWeight(const Host& host) const {
+  ENVOY_LOG_MISC(info, "tetraloba: least_request_lb.cc:6: hostWeight() called!");
   // This method is called to calculate the dynamic weight as following when all load balancing
   // weights are not equal:
   //
@@ -48,7 +49,8 @@ double LeastRequestLoadBalancer::hostWeight(const Host& host) const {
 
 HostConstSharedPtr LeastRequestLoadBalancer::unweightedHostPeek(const HostVector&,
                                                                 const HostsSource&) {
-  // LeastRequestLoadBalancer can not do deterministic preconnecting, because
+  ENVOY_LOG_MISC(info, "tetraloba: least_request_lb.cc:50: unweightedHostPeek() called!");
+                                                                  // LeastRequestLoadBalancer can not do deterministic preconnecting, because
   // any other thread might select the least-requested-host between preconnect and
   // host-pick, and change the rq_active checks.
   return nullptr;
@@ -56,6 +58,7 @@ HostConstSharedPtr LeastRequestLoadBalancer::unweightedHostPeek(const HostVector
 
 HostConstSharedPtr LeastRequestLoadBalancer::unweightedHostPick(const HostVector& hosts_to_use,
                                                                 const HostsSource&) {
+  ENVOY_LOG_MISC(info, "tetraloba: least_request_lb.cc:59: unweightedHostPick() called!");
   HostSharedPtr candidate_host = nullptr;
 
   switch (selection_method_) {
@@ -73,6 +76,7 @@ HostConstSharedPtr LeastRequestLoadBalancer::unweightedHostPick(const HostVector
 }
 
 HostSharedPtr LeastRequestLoadBalancer::unweightedHostPickFullScan(const HostVector& hosts_to_use) {
+  ENVOY_LOG_MISC(info, "tetraloba: least_request_lb.cc:78: unweightedHostPickFullScan() called!");
   HostSharedPtr candidate_host = nullptr;
 
   size_t num_hosts_known_tied_for_least = 0;
@@ -117,6 +121,7 @@ HostSharedPtr LeastRequestLoadBalancer::unweightedHostPickFullScan(const HostVec
 }
 
 HostSharedPtr LeastRequestLoadBalancer::unweightedHostPickNChoices(const HostVector& hosts_to_use) {
+  ENVOY_LOG_MISC(info, "tetraloba: least_request_lb.cc:123: unweightedHostPickNChoices() called!");
   HostSharedPtr candidate_host = nullptr;
 
   for (uint32_t choice_idx = 0; choice_idx < choice_count_; ++choice_idx) {
