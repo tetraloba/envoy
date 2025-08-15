@@ -93,6 +93,9 @@ message Cluster {
     // for an explanation.
     LEAST_REQUEST = 1;
 
+    // added by tetraloba
+    LEAST_RESPONSE_TIME = 48;
+
     // Refer to the :ref:`ring hash load balancing
     // policy<arch_overview_load_balancing_types_ring_hash>`
     // for an explanation.
