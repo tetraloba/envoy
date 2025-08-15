@@ -1069,6 +1069,10 @@ LegacyLbPolicyConfigHelper::getTypedLbConfigFromLegacyProtoWithoutSubset(
     lb_factory = Config::Utility::getFactoryByName<TypedLoadBalancerFactory>(
         "envoy.load_balancing_policies.least_request");
     break;
+  case ClusterProto::LEAST_RESPONSE_TIME:
+    lb_factory = Config::Utility::getFactoryByName<TypedLoadBalancerFactory>(
+        "envoy.load_balancing_policies.least_response_time");
+    break;
   case ClusterProto::RANDOM:
     lb_factory = Config::Utility::getFactoryByName<TypedLoadBalancerFactory>(
         "envoy.load_balancing_policies.random");
