@@ -58,7 +58,11 @@ HostConstSharedPtr LeastRequestLoadBalancer::unweightedHostPeek(const HostVector
 
 HostConstSharedPtr LeastRequestLoadBalancer::unweightedHostPick(const HostVector& hosts_to_use,
                                                                 const HostsSource&) {
-  ENVOY_LOG_MISC(error, "tetraloba: least_request_lb.cc:59: unweightedHostPick() called!");
+  ENVOY_LOG_MISC(trace, "tetraloba: least_request_lb.cc:59: unweightedHostPick() called! (trace)");
+  ENVOY_LOG_MISC(debug, "tetraloba: least_request_lb.cc:59: unweightedHostPick() called! (debug)");
+  ENVOY_LOG_MISC(info, "tetraloba: least_request_lb.cc:59: unweightedHostPick() called! (info)");
+  ENVOY_LOG_MISC(warn, "tetraloba: least_request_lb.cc:59: unweightedHostPick() called! (warn)");
+  ENVOY_LOG_MISC(error, "tetraloba: least_request_lb.cc:59: unweightedHostPick() called! (error)");
   HostSharedPtr candidate_host = nullptr;
 
   switch (selection_method_) {
