@@ -49,6 +49,11 @@ public:
                 ? absl::optional<Runtime::Double>(
                       {least_request_config->active_request_bias(), runtime})
                 : absl::nullopt) {
+    ENVOY_LOG(trace, "tetraloba: least_request_lb.h:27: LeastRequestLoadBalancer::LeastRequestLoadBalancer() called! (trace)");
+    ENVOY_LOG(debug, "tetraloba: least_request_lb.h:27: LeastRequestLoadBalancer::LeastRequestLoadBalancer() called! (debug)");
+    ENVOY_LOG(info, "tetraloba: least_request_lb.h:27: LeastRequestLoadBalancer::LeastRequestLoadBalancer() called! (info)");
+    ENVOY_LOG(warn, "tetraloba: least_request_lb.h:27: LeastRequestLoadBalancer::LeastRequestLoadBalancer() called! (warn)");
+    ENVOY_LOG(error, "tetraloba: least_request_lb.h:27: LeastRequestLoadBalancer::LeastRequestLoadBalancer() called! (error)");
     initialize();
   }
 
@@ -69,6 +74,11 @@ public:
                       {least_request_config.active_request_bias(), runtime})
                 : absl::nullopt),
         selection_method_(least_request_config.selection_method()) {
+    ENVOY_LOG(trace, "tetraloba: least_request_lb.h:60: LeastRequestLoadBalancer::LeastRequestLoadBalancer() called! (trace)");
+    ENVOY_LOG(debug, "tetraloba: least_request_lb.h:60: LeastRequestLoadBalancer::LeastRequestLoadBalancer() called! (debug)");
+    ENVOY_LOG(info, "tetraloba: least_request_lb.h:60: LeastRequestLoadBalancer::LeastRequestLoadBalancer() called! (info)");
+    ENVOY_LOG(warn, "tetraloba: least_request_lb.h:60: LeastRequestLoadBalancer::LeastRequestLoadBalancer() called! (warn)");
+    ENVOY_LOG(error, "tetraloba: least_request_lb.h:60: LeastRequestLoadBalancer::LeastRequestLoadBalancer() called! (error)");
     initialize();
   }
 

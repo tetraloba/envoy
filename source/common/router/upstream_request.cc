@@ -228,6 +228,8 @@ void UpstreamRequest::cleanUp() {
   stream_info_.onRequestComplete();
   upstreamLog(AccessLog::AccessLogType::UpstreamEnd);
 
+  ENVOY_LOG(error, "tetraloba: UpstreamRequest::cleanUp(): rq_active is {}.", upstream_host_.stats().rq_active_.value());
+
   while (downstream_data_disabled_ != 0) {
     parent_.callbacks()->onDecoderFilterBelowWriteBufferLowWatermark();
     parent_.cluster()->trafficStats()->upstream_flow_control_drained_total_.inc();
