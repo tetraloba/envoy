@@ -6,11 +6,11 @@ namespace Envoy {
 namespace Upstream {
 
 double LeastResponseTimeLoadBalancer::hostWeight(const Host& host) const {
-  ENVOY_LOG_MISC(info, "tetraloba: least_response_time_lb.cc:8: hostWeight() called!");
+  ENVOY_LOG(info, "tetraloba: least_response_time_lb.cc:8: hostWeight() called!");
   // This method is called to calculate the dynamic weight as following when all load balancing
   // weights are not equal:
   //
-  // `weight = load_balancing_weight / (active_requests + 1)^active_request_bias`
+  // `weight = load_balancing_weight / (request_durations + 1)^active_request_bias`
   //
   // `active_request_bias` can be configured via runtime and its value is cached in
   // `active_request_bias_` to avoid having to do a runtime lookup each time a host weight is
@@ -30,19 +30,19 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& host) const {
   // If the value of active requests is the max value, adding +1 will overflow
   // it and cause a divide by zero. This won't happen in normal cases but stops
   // failing fuzz tests
-  const uint64_t active_request_value =
-      host.stats().rq_active_.value() != std::numeric_limits<uint64_t>::max()
-          ? host.stats().rq_active_.value() + 1
-          : host.stats().rq_active_.value();
+  const uint64_t request_duration_value =
+      host.stats().rq_duration_.value() != std::numeric_limits<uint64_t>::max()
+          ? host.stats().rq_duration_.value() + 1
+          : host.stats().rq_duration_.value();
 
   if (active_request_bias_ == 1.0) {
-    host_weight = static_cast<double>(host.weight()) / active_request_value;
+    host_weight = static_cast<double>(host.weight()) / request_duration_value;
   } else if (active_request_bias_ != 0.0) {
     host_weight =
-        static_cast<double>(host.weight()) / std::pow(active_request_value, active_request_bias_);
+        static_cast<double>(host.weight()) / std::pow(request_duration_value, active_request_bias_);
   }
 
-  ENVOY_LOG_MISC(info, "tetraloba: least_response_time_lb.cc:8: hostWeight(): host_weight: " + std::to_string(host_weight));
+  ENVOY_LOG(info, "tetraloba: least_response_time_lb.cc:8: hostWeight(): host_weight: " + std::to_string(host_weight));
   if (!noHostsAreInSlowStart()) {
     return applySlowStartFactor(host_weight, host);
   } else {
@@ -52,7 +52,7 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& host) const {
 
 HostConstSharedPtr LeastResponseTimeLoadBalancer::unweightedHostPeek(const HostVector&,
                                                                 const HostsSource&) {
-  ENVOY_LOG_MISC(info, "tetraloba: least_response_time_lb.cc:55: unweightedHostPeek() called!");
+  ENVOY_LOG(info, "tetraloba: least_response_time_lb.cc:55: unweightedHostPeek() called!");
   // LeastResponseTimeLoadBalancer can not do deterministic preconnecting, because
   // any other thread might select the least-requested-host between preconnect and
   // host-pick, and change the rq_active checks.
@@ -61,7 +61,7 @@ HostConstSharedPtr LeastResponseTimeLoadBalancer::unweightedHostPeek(const HostV
 
 HostConstSharedPtr LeastResponseTimeLoadBalancer::unweightedHostPick(const HostVector& hosts_to_use,
                                                                 const HostsSource&) {
-  ENVOY_LOG_MISC(info, "tetraloba: least_response_time_lb.cc:61: unweightedHostPick() called!");
+  ENVOY_LOG(info, "tetraloba: least_response_time_lb.cc:61: unweightedHostPick() called!");
   HostSharedPtr candidate_host = nullptr;
 
   switch (selection_method_) {
@@ -79,7 +79,7 @@ HostConstSharedPtr LeastResponseTimeLoadBalancer::unweightedHostPick(const HostV
 }
 
 HostSharedPtr LeastResponseTimeLoadBalancer::unweightedHostPickFullScan(const HostVector& hosts_to_use) {
-  ENVOY_LOG_MISC(info, "tetraloba: least_response_time_lb.cc:80: unweightedHostPickFullScan() called!");
+  ENVOY_LOG(info, "tetraloba: least_response_time_lb.cc:80: unweightedHostPickFullScan() called!");
   HostSharedPtr candidate_host = nullptr;
 
   size_t num_hosts_known_tied_for_least = 0;
@@ -96,14 +96,14 @@ HostSharedPtr LeastResponseTimeLoadBalancer::unweightedHostPickFullScan(const Ho
       continue;
     }
 
-    const auto candidate_active_rq = candidate_host->stats().rq_active_.value();
-    const auto sampled_active_rq = sampled_host->stats().rq_active_.value();
+    const auto candidate_rq_duration = candidate_host->stats().rq_duration_.value();
+    const auto sampled_rq_duration = sampled_host->stats().rq_duration_.value();
 
-    if (sampled_active_rq < candidate_active_rq) {
+    if (sampled_rq_duration < candidate_rq_duration) {
       // Reset the count of known tied hosts.
       num_hosts_known_tied_for_least = 1;
       candidate_host = sampled_host;
-    } else if (sampled_active_rq == candidate_active_rq) {
+    } else if (sampled_rq_duration == candidate_rq_duration) {
       ++num_hosts_known_tied_for_least;
 
       // Use reservoir sampling to select 1 unique sample from the total number of hosts N
@@ -124,7 +124,7 @@ HostSharedPtr LeastResponseTimeLoadBalancer::unweightedHostPickFullScan(const Ho
 }
 
 HostSharedPtr LeastResponseTimeLoadBalancer::unweightedHostPickNChoices(const HostVector& hosts_to_use) {
-  ENVOY_LOG_MISC(info, "tetraloba: least_response_time_lb.cc:125: unweightedHostPickNChoices() called!");
+  ENVOY_LOG(info, "tetraloba: least_response_time_lb.cc:125: unweightedHostPickNChoices() called!");
   HostSharedPtr candidate_host = nullptr;
 
   for (uint32_t choice_idx = 0; choice_idx < choice_count_; ++choice_idx) {
@@ -137,10 +137,10 @@ HostSharedPtr LeastResponseTimeLoadBalancer::unweightedHostPickNChoices(const Ho
       continue;
     }
 
-    const auto candidate_active_rq = candidate_host->stats().rq_active_.value();
-    const auto sampled_active_rq = sampled_host->stats().rq_active_.value();
+    const auto candidate_rq_duration = candidate_host->stats().rq_duration_.value();
+    const auto sampled_rq_duration = sampled_host->stats().rq_duration_.value();
 
-    if (sampled_active_rq < candidate_active_rq) {
+    if (sampled_rq_duration < candidate_rq_duration) {
       candidate_host = sampled_host;
     }
   }

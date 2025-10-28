@@ -177,6 +177,17 @@ void UpstreamRequest::cleanUp() {
                                                      tracing_config.value().get());
   }
 
+  Event::Dispatcher& dispatcher = parent_.callbacks()->dispatcher();
+  const MonotonicTime end_time = dispatcher.timeSource().monotonicTime();
+  const std::chrono::nanoseconds response_time_nano =
+      std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time_);
+  ENVOY_LOG(error, "tetraloba: UpstreamRequest::cleanUp(): response_time_nano is {}", response_time_nano.count());
+  if (upstream_host_ != nullptr) {
+    u_int64_t rq_duration = upstream_host_->stats().rq_duration_.value();
+    upstream_host_->stats().rq_duration_.set((rq_duration + response_time_nano.count() * 2) / 3);
+    ENVOY_LOG(error, "tetraloba: UpstreamRequest::cleanUp(): rq_duration is {}", upstream_host_->stats().rq_duration_.value());
+  }
+
   if (per_try_timeout_ != nullptr) {
     // Allows for testing.
     per_try_timeout_->disableTimer();
@@ -200,10 +211,8 @@ void UpstreamRequest::cleanUp() {
   // If desired, fire the per-try histogram when the UpstreamRequest
   // completes.
   if (record_timeout_budget_) {
-    Event::Dispatcher& dispatcher = parent_.callbacks()->dispatcher();
-    const MonotonicTime end_time = dispatcher.timeSource().monotonicTime();
     const std::chrono::milliseconds response_time =
-        std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time_);
+        std::chrono::duration_cast<std::chrono::milliseconds>(response_time_nano);
     Upstream::ClusterTimeoutBudgetStatsOptRef tb_stats = parent_.cluster()->timeoutBudgetStats();
     tb_stats->get().upstream_rq_timeout_budget_per_try_percent_used_.recordValue(
         FilterUtility::percentageOfTimeout(response_time, parent_.timeout().per_try_timeout_));
