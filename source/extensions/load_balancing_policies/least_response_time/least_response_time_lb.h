@@ -49,6 +49,11 @@ public:
                 ? absl::optional<Runtime::Double>(
                       {least_response_time_config->active_request_bias(), runtime})
                 : absl::nullopt) {
+    ENVOY_LOG(trace, "tetraloba: least_response_time_lb.h:27: LeastResponseTimeLoadBalancer::LeastResponseTimeLoadBalancer() called! (trace)");
+    ENVOY_LOG(debug, "tetraloba: least_response_time_lb.h:27: LeastResponseTimeLoadBalancer::LeastResponseTimeLoadBalancer() called! (debug)");
+    ENVOY_LOG(info, "tetraloba: least_response_time_lb.h:27: LeastResponseTimeLoadBalancer::LeastResponseTimeLoadBalancer() called! (info)");
+    ENVOY_LOG(warn, "tetraloba: least_response_time_lb.h:27: LeastResponseTimeLoadBalancer::LeastResponseTimeLoadBalancer() called! (warn)");
+    ENVOY_LOG(error, "tetraloba: least_response_time_lb.h:27: LeastResponseTimeLoadBalancer::LeastResponseTimeLoadBalancer() called! (error)");
     initialize();
   }
 
@@ -99,6 +104,10 @@ private:
   HostSharedPtr unweightedHostPickNChoices(const HostVector& hosts_to_use);
 
   const uint32_t choice_count_;
+
+  u_int64_t calculatePredictedC(u_int64_t previous_c, u_int64_t lambda, u_int64_t average_rtt, double target_rho, u_int64_t c_ssthresh) const;
+  u_int64_t calculatePredictedMu(u_int64_t lambda, u_int64_t average_rtt) const;
+  void updateWeights();
 
   // The exponent used to calculate host weights can be configured via runtime. We cache it for
   // performance reasons and refresh it in `LeastResponseTimeLoadBalancer::refresh(uint32_t priority)`

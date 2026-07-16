@@ -39,9 +39,16 @@ using MetadataConstSharedPtr = std::shared_ptr<const envoy::config::core::v3::Me
   COUNTER(rq_success)                                                                              \
   COUNTER(rq_timeout)                                                                              \
   COUNTER(rq_total)                                                                                \
+  COUNTER(current_time)                                                                            \
+  COUNTER(current_rq_total)                                                                        \
+  COUNTER(current_rq_duration_total)                                                               \
   GAUGE(cx_active)                                                                                 \
   GAUGE(rq_active)                                                                                 \
-  GAUGE(rq_duration)
+  GAUGE(previous_rq_total)                                                                         \
+  GAUGE(previous_rq_duration_total)
+  // GAUGE(predicted_c)                                                                               \
+  // GAUGE(predicted_mu)                                                                              \
+  // GAUGE(c_ssthresh)
 
 /**
  * All per host stats defined. @see stats_macros.h
