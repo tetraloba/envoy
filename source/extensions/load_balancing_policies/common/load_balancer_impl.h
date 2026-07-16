@@ -484,6 +484,8 @@ protected:
   bool isSlowStartEnabled() const;
   bool noHostsAreInSlowStart() const;
 
+  virtual bool shouldCreateEdf(const HostVector& hosts) const;
+
   virtual void recalculateHostsInSlowStart(const HostVector& hosts_added);
 
   // Seed to allow us to desynchronize load balancers across a fleet. If we don't

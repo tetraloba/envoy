@@ -13,6 +13,7 @@
 #include "envoy/runtime/runtime.h"
 #include "envoy/upstream/upstream.h"
 
+#include "load_balancer_impl.h"
 #include "source/common/common/assert.h"
 #include "source/common/common/logger.h"
 #include "source/common/protobuf/utility.h"
@@ -943,6 +944,14 @@ void EdfLoadBalancerBase::recalculateHostsInSlowStart(const HostVector& hosts) {
   }
 }
 
+bool EdfLoadBalancerBase::shouldCreateEdf(const HostVector& hosts) const {
+  // Check if the original host weights are equal or no hosts are in slow start mode, in that
+  // case EDF creation is skipped. When all original weights are equal and no hosts are in slow
+  // start mode we can rely on unweighted host pick to do optimal round robin and least-loaded
+  // host selection with lower memory and CPU overhead.
+  return hostWeightsAreEqual(hosts) || noHostsAreInSlowStart();
+}
+
 void EdfLoadBalancerBase::refresh(uint32_t priority) {
   const auto add_hosts_source = [this](HostsSource source, const HostVector& hosts) {
     // Nuke existing scheduler if it exists.
@@ -952,12 +961,7 @@ void EdfLoadBalancerBase::refresh(uint32_t priority) {
       recalculateHostsInSlowStart(hosts);
     }
 
-    // Check if the original host weights are equal and no hosts are in slow start mode, in that
-    // case EDF creation is skipped. When all original weights are equal and no hosts are in slow
-    // start mode we can rely on unweighted host pick to do optimal round robin and least-loaded
-    // host selection with lower memory and CPU overhead.
-    if (hostWeightsAreEqual(hosts) && noHostsAreInSlowStart()) {
-      // Skip edf creation.
+    if (!shouldCreateEdf(hosts)) {
       return;
     }
 
