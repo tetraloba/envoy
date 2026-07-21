@@ -55,6 +55,15 @@ public:
     ENVOY_LOG(warn, "tetraloba: least_response_time_lb.h:27: LeastResponseTimeLoadBalancer::LeastResponseTimeLoadBalancer() called! (warn)");
     ENVOY_LOG(error, "tetraloba: least_response_time_lb.h:27: LeastResponseTimeLoadBalancer::LeastResponseTimeLoadBalancer() called! (error)");
     initialize();
+    int host_num = 0;
+    for (const auto& host_set : prioritySet().hostSetsPerPriority()) {
+      host_num += host_set->hosts().size();
+    }
+    host_lambdas_.resize(host_num);
+    host_rtts_.resize(host_num);
+    host_cs_.resize(host_num);
+    host_mus_.resize(host_num);
+    host_weights_.resize(host_num);
   }
 
   LeastResponseTimeLoadBalancer(
@@ -74,7 +83,21 @@ public:
                       {least_response_time_config.active_request_bias(), runtime})
                 : absl::nullopt),
         selection_method_(least_response_time_config.selection_method()) {
+    ENVOY_LOG(trace, "tetraloba: least_response_time_lb.h:60: LeastResponseTimeLoadBalancer::LeastResponseTimeLoadBalancer() called! (trace)");
+    ENVOY_LOG(debug, "tetraloba: least_response_time_lb.h:60: LeastResponseTimeLoadBalancer::LeastResponseTimeLoadBalancer() called! (debug)");
+    ENVOY_LOG(info, "tetraloba: least_response_time_lb.h:60: LeastResponseTimeLoadBalancer::LeastResponseTimeLoadBalancer() called! (info)");
+    ENVOY_LOG(warn, "tetraloba: least_response_time_lb.h:60: LeastResponseTimeLoadBalancer::LeastResponseTimeLoadBalancer() called! (warn)");
+    ENVOY_LOG(error, "tetraloba: least_response_time_lb.h:60: LeastResponseTimeLoadBalancer::LeastResponseTimeLoadBalancer() called! (error)");
     initialize();
+    int host_num = 0;
+    for (const auto& host_set : prioritySet().hostSetsPerPriority()) {
+      host_num += host_set->hosts().size();
+    }
+    host_lambdas_.resize(host_num);
+    host_rtts_.resize(host_num);
+    host_cs_.resize(host_num);
+    host_mus_.resize(host_num);
+    host_weights_.resize(host_num);
   }
 
 protected:
@@ -104,10 +127,16 @@ private:
   HostSharedPtr unweightedHostPickNChoices(const HostVector& hosts_to_use);
 
   const uint32_t choice_count_;
-
-  u_int64_t calculatePredictedC(u_int64_t previous_c, u_int64_t lambda, u_int64_t average_rtt, double target_rho, u_int64_t c_ssthresh) const;
+  double calculateAveRTT(double lambd, double mu, u_int32_t c)
+  u_int32_t calculatePredictedC(u_int32_t previous_c, u_int64_t lambda, u_int64_t average_rtt, double target_rho, u_int64_t c_ssthresh) const;
   u_int64_t calculatePredictedMu(u_int64_t lambda, u_int64_t average_rtt) const;
   void updateWeights();
+
+  std::vector<u_int64_t> host_lambdas_;
+  std::vector<u_int64_t> host_rtts_;
+  std::vector<u_int32_t> host_cs_;
+  std::vector<u_int64_t> host_mus_;
+  std::vector<u_int64_t> host_weights_;
 
   // The exponent used to calculate host weights can be configured via runtime. We cache it for
   // performance reasons and refresh it in `LeastResponseTimeLoadBalancer::refresh(uint32_t priority)`
