@@ -56,7 +56,7 @@ public:
     ENVOY_LOG(error, "tetraloba: least_response_time_lb.h:27: LeastResponseTimeLoadBalancer::LeastResponseTimeLoadBalancer() called! (error)");
     initialize();
     int host_num = 0;
-    for (const auto& host_set : prioritySet().hostSetsPerPriority()) {
+    for (const auto& host_set : priority_set_.hostSetsPerPriority()) {
       host_num += host_set->hosts().size();
     }
     host_lambdas_.resize(host_num);
@@ -90,7 +90,7 @@ public:
     ENVOY_LOG(error, "tetraloba: least_response_time_lb.h:60: LeastResponseTimeLoadBalancer::LeastResponseTimeLoadBalancer() called! (error)");
     initialize();
     int host_num = 0;
-    for (const auto& host_set : prioritySet().hostSetsPerPriority()) {
+    for (const auto& host_set : priority_set_.hostSetsPerPriority()) {
       host_num += host_set->hosts().size();
     }
     host_lambdas_.resize(host_num);
@@ -127,9 +127,9 @@ private:
   HostSharedPtr unweightedHostPickNChoices(const HostVector& hosts_to_use);
 
   const uint32_t choice_count_;
-  double calculateAveRtt(double lambda, double mu, u_int32_t c);
-  u_int32_t calculatePredictedC(u_int32_t previous_c, u_int64_t lambda, u_int64_t average_rtt, double target_rho, u_int64_t c_ssthresh) const;
-  u_int64_t calculatePredictedMu(u_int32_t c, u_int64_t lambda, u_int64_t average_rtt) const;
+  static double calculateAveRtt(double lambda, double mu, u_int32_t c);
+  static u_int32_t calculatePredictedC(u_int32_t previous_c, u_int64_t lambda, u_int64_t average_rtt, double target_rho, u_int64_t c_ssthresh);
+  static u_int64_t calculatePredictedMu(u_int32_t c, u_int64_t lambda, u_int64_t average_rtt);
   void updateWeights(const std::vector<HostSharedPtr>& hosts);
 
   std::vector<u_int64_t> host_lambdas_;
