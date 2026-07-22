@@ -1,4 +1,5 @@
 #include <cmath>
+#include <limits>
 #include <stdexcept>
 
 #include "source/extensions/load_balancing_policies/least_response_time/least_response_time_lb.h"
@@ -42,15 +43,23 @@ u_int64_t LeastResponseTimeLoadBalancer::calculatePredictedMu(u_int32_t c, u_int
   auto func = [](u_int32_t c, double mu, double lambda, double average_rtt) {return calculateAveRtt(c, mu, lambda) - average_rtt;};
   /* func(mu) = 0 となる mu を二分探索 */
   // #todo
-  (void)c; (void)lambda; (void)average_rtt; // avoid -Werror -Wunused-parameter
+  (void)func; (void)c; (void)lambda; (void)average_rtt; // avoid -Werror -Wunused-parameter
   return 0;
 }
-u_int32_t LeastResponseTimeLoadBalancer::calculatePredictedC(u_int32_t previous_c, u_int64_t lambda, u_int64_t average_rtt, double target_rho, u_int64_t previous_c_ssthresh) {
+u_int64_t calculateCSsthresh(u_int64_t previous_c_ssthresh, double rho, double target_rho) {
+  if (previous_c_ssthresh == 0) {
+    return std::numeric_limits<u_int64_t>::max();
+  }
+  if (rho > target_rho) {
+    return previous_c_ssthresh / 2; // ceiler #todo
+  } else {
+    return previous_c_ssthresh;
+  }
+}
+u_int32_t LeastResponseTimeLoadBalancer::calculatePredictedC(u_int32_t previous_c, double rho, double target_rho, u_int64_t c_ssthresh) {
   if (previous_c == 0) {
     return 1;
   }
-  double rho = static_cast<double>(lambda) / calculatePredictedMu(previous_c, lambda, average_rtt);
-  u_int64_t c_ssthresh = (previous_c == 0 ? std::numeric_limits<u_int64_t>::max() : (rho > target_rho ? previous_c_ssthresh / 2 : previous_c_ssthresh)); // ceiler #todo
   if (previous_c < c_ssthresh) {
     return previous_c == 0 ? 1 : 2 * previous_c;
   } else {
@@ -73,6 +82,8 @@ void LeastResponseTimeLoadBalancer::updateWeights(const std::vector<HostSharedPt
   for (u_int32_t i = 1; i < host_cs_.size(); i++) {
     // 重み設定
     u_int32_t weight = 0; // 1-128
+    // #todo
+    (void)max_weight_index; // to avoid -Werror -Wunused-variable
     ENVOY_LOG(debug, "tetraloba: least_request_lb.cc:11: Setting weight {} for host {}", weight, hosts[i]->address()->asString());
     host_weights_[i] = weight;
   }
@@ -103,7 +114,7 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
     }
   }
   for (const auto& host : hosts) {
-    max_current_time = max_current_time < host->stats().current_time_ ? host->stats().current_time_ : max_current_time;
+    max_current_time = max_current_time < host->stats().current_time_.value() ? host->stats().current_time_.value() : max_current_time;
   }
 
   u_int32_t target_host_index;
@@ -112,6 +123,7 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
   for (const auto& host : hosts) {
     u_int64_t lambda = host_lambdas_[i]; // 到着率
     u_int64_t rtt = host_rtts_[i]; // 平均応答時間
+    u_int64_t c_ssthresh = host_c_ssthresh_[i]; // cのスロースタート閾値
     u_int32_t c = host_cs_[i]; // 窓口数
     u_int64_t mu = host_mus_[i]; // サービス率
     // current_timeがmax_current_time - time_slice_size以前のものはcurrent_から計算して、以降のものはprevious_から計算する。
@@ -123,8 +135,10 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
       rtt = host->stats().previous_rq_duration_total_.value() / host->stats().previous_rq_total_.value();
     }
     // 平均応答時間が変化していればcとμを再計算。
-    if (rtt != host_rtts[i]) {
-      c = calculatePredictedC(lambda, rtt, c); // #todo
+    if (rtt != host_rtts_[i]) {
+      double rho = static_cast<double>(lambda) / calculatePredictedMu(previous_c, lambda, average_rtt);
+      c_ssthresh = calculateCSsthresh(c_ssthresh, rho, target_rho);
+      c = calculatePredictedC(c, rho, target_rho, c_ssthresh); // #todo
       mu = calculatePredictedMu(lambda, rtt, c); // #todo
       host_rtts_[i] = rtt;
     }

@@ -128,15 +128,17 @@ private:
 
   const uint32_t choice_count_;
   static double calculateAveRtt(double lambda, double mu, u_int32_t c);
-  static u_int32_t calculatePredictedC(u_int32_t previous_c, u_int64_t lambda, u_int64_t average_rtt, double target_rho, u_int64_t c_ssthresh);
+  static u_int64_t calculateCSsthresh(u_int64_t previous_c_ssthresh, double rho, double target_rho);
+  static u_int32_t calculatePredictedC(u_int32_t previous_c, double rho, double target_rho, u_int64_t c_ssthresh);
   static u_int64_t calculatePredictedMu(u_int32_t c, u_int64_t lambda, u_int64_t average_rtt);
   void updateWeights(const std::vector<HostSharedPtr>& hosts);
 
-  std::vector<u_int64_t> host_lambdas_;
-  std::vector<u_int64_t> host_rtts_;
-  std::vector<u_int32_t> host_cs_;
-  std::vector<u_int64_t> host_mus_;
-  std::vector<u_int64_t> host_weights_;
+  mutable std::vector<u_int64_t> host_lambdas_;
+  mutable std::vector<u_int64_t> host_rtts_;
+  mutable std::vector<u_int64_t> host_c_ssthresh_;
+  mutable std::vector<u_int32_t> host_cs_;
+  mutable std::vector<u_int64_t> host_mus_;
+  mutable std::vector<u_int64_t> host_weights_;
 
   // The exponent used to calculate host weights can be configured via runtime. We cache it for
   // performance reasons and refresh it in `LeastResponseTimeLoadBalancer::refresh(uint32_t priority)`
