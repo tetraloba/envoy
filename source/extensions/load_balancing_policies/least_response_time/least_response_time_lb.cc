@@ -15,12 +15,12 @@ double factorial(int n) {
     throw std::invalid_argument("Factorial is not defined for negative numbers.");
   }
   double result = 1.0;
-  for (int i = 2; i <= n; ++i) {
+  for (u_int32_t i = 2; i <= n; ++i) {
     result *= i;
   }
   return result;
 }
-double LeastResponseTimeLoadBalancer::calculateAveRtt(double lambd, double mu, u_int32_t c) {
+double LeastResponseTimeLoadBalancer::calculateAveRtt(double lambda, double mu, u_int32_t c) {
   if (c <= 0) {
     throw std::invalid_argument("Number of cores (c) must be greater than 0.");
   }
@@ -30,15 +30,15 @@ double LeastResponseTimeLoadBalancer::calculateAveRtt(double lambd, double mu, u
 
   double mu_per_core = mu / c;
   double sum = 0.0; // p0の分母の総和部分
-  for (int k = 0; k < c; ++k) {
-    sum += std::pow(lambd / mu_per_core, k) / factorial(k);
+  for (u_int32_t k = 0; k < c; ++k) {
+    sum += std::pow(lambda / mu_per_core, k) / factorial(k);
   }
-  double p0 = 1.0 / (sum + (1.0 / factorial(c)) * std::pow(lambd / mu_per_core, c) * (c * mu_per_core / (c * mu_per_core - lambd)));
-  double aveRTT = 1000.0 * (std::pow(lambd / mu_per_core, c) * mu_per_core / (factorial(c - 1) * std::pow(c * mu_per_core - lambd, 2)) * p0 + (1.0 / mu_per_core));
+  double p0 = 1.0 / (sum + (1.0 / factorial(c)) * std::pow(lambda / mu_per_core, c) * (c * mu_per_core / (c * mu_per_core - lambda)));
+  double aveRTT = 1000.0 * (std::pow(lambda / mu_per_core, c) * mu_per_core / (factorial(c - 1) * std::pow(c * mu_per_core - lambda, 2)) * p0 + (1.0 / mu_per_core));
   return aveRTT;
 }
 u_int64_t LeastResponseTimeLoadBalancer::calculatePredictedMu(u_int32_t c, u_int64_t lambda, u_int64_t average_rtt) const {
-  auto func = [](double mu) {return calculateAveRtt(c, mu, lambda) - average_rtt;}
+  auto func = [](u_int32_t c, double mu, double lambda, double average_rtt) {return calculateAveRtt(c, mu, lambda) - average_rtt;};
   /* func(mu) = 0 となる mu を二分探索 */
   // #todo
   return 0;
@@ -49,17 +49,27 @@ u_int32_t LeastResponseTimeLoadBalancer::calculatePredictedC(u_int32_t previous_
   }
   double rho = (double)lambda / calculatePredictedMu(previous_c, lambda, average_rtt);
   u_int64_t c_ssthresh = (previous_c == 0 ? std::numeric_limits<u_int64_t>::max() : (rho > target_rho ? previous_c_ssthresh / 2 : previous_c_ssthresh)); // ceiler #todo
-  if (previous_c < c_sshthresh) {
+  if (previous_c < c_ssthresh) {
     return previous_c == 0 ? 1 : 2 * previous_c;
   } else {
     return rho > target_rho ? previous_c / 2 : previous_c + 1; // ceiler? #todo
   }
 }
 
-void LeastResponseTimeLoadBalancer::updateWeights() {
-  ENVOY_LOG(error, "tetraloba: least_request_lb.cc:6: updateWeights() called!");
+// std::pair<double, double> LeastResponseTimeLoadBalancer::calculateWeight(u_int32_t c1, u_int64_t mu1, u_int32_t c2, u_int64_t mu2) const {
+  
+// }
+
+void LeastResponseTimeLoadBalancer::updateWeights(std::vector<HostSharedPtr> hosts) {
+  ENVOY_LOG(error, "tetraloba: least_request_lb.cc:59: updateWeights() called!");
+  if (hosts.empty()) {
+    ENVOY_LOG(warn, "tetraloba: least_request_lb.cc:59: No hosts available to update weights.");
+    return;
+  }
+  std::vector<double> host_temporarily_weights(hosts.size());
+  host_temporarily_weights[0] = 1.0; // host 0 の重み1を基準とする
   u_int32_t max_weight_index = 0; // 重みが最大であるホストのindex
-  for (u_int32_t i = 1; i < host_cs.size(); i++) {
+  for (u_int32_t i = 1; i < host_cs_.size(); i++) {
     // 重み設定
     u_int32_t weight = 0; // 1-128
     ENVOY_LOG(debug, "tetraloba: least_request_lb.cc:11: Setting weight {} for host {}", weight, host->address()->asString());
@@ -86,7 +96,7 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
   const double target_rho = 0.8; // hard coding
   u_int64_t max_current_time = 0;
   std::vector<HostSharedPtr> hosts; // hostの一次元配列(shared_pointer)
-  for (const auto& host_set : prioritySet().hostSetsPerPriority()) {
+  for (const auto& host_set : priority_set_.hostSetsPerPriority()) {
     for (const auto& host_ptr : host_set->hosts()) {
       hosts.push_back(host_ptr);
     }
@@ -130,7 +140,7 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
     i++;
   }
   if (recalc_weight_required) {
-    updateWeights();
+    updateWeights(hosts);
   }
 
   // if (!noHostsAreInSlowStart()) {

@@ -127,10 +127,10 @@ private:
   HostSharedPtr unweightedHostPickNChoices(const HostVector& hosts_to_use);
 
   const uint32_t choice_count_;
-  double calculateAveRTT(double lambd, double mu, u_int32_t c)
+  double calculateAveRtt(double lambda, double mu, u_int32_t c);
   u_int32_t calculatePredictedC(u_int32_t previous_c, u_int64_t lambda, u_int64_t average_rtt, double target_rho, u_int64_t c_ssthresh) const;
-  u_int64_t calculatePredictedMu(u_int64_t lambda, u_int64_t average_rtt) const;
-  void updateWeights();
+  u_int64_t calculatePredictedMu(u_int32_t c, u_int64_t lambda, u_int64_t average_rtt) const;
+  void updateWeights(const std::vector<HostSharedPtr>& hosts);
 
   std::vector<u_int64_t> host_lambdas_;
   std::vector<u_int64_t> host_rtts_;
