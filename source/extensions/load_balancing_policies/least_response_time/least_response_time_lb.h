@@ -131,7 +131,7 @@ private:
   static u_int64_t calculateCSsthresh(u_int64_t previous_c_ssthresh, double rho, double target_rho);
   static u_int32_t calculatePredictedC(u_int32_t previous_c, double rho, double target_rho, u_int64_t c_ssthresh);
   static u_int64_t calculatePredictedMu(u_int32_t c, u_int64_t lambda, u_int64_t average_rtt);
-  void updateWeights(const std::vector<HostSharedPtr>& hosts);
+  void updateWeights(const std::vector<HostSharedPtr>& hosts) const;
 
   mutable std::vector<u_int64_t> host_lambdas_;
   mutable std::vector<u_int64_t> host_rtts_;

@@ -70,7 +70,7 @@ u_int32_t LeastResponseTimeLoadBalancer::calculatePredictedC(u_int32_t previous_
 // std::pair<double, double> LeastResponseTimeLoadBalancer::calculateWeight(u_int32_t c1, u_int64_t mu1, u_int32_t c2, u_int64_t mu2) const {
   
 // }
-void LeastResponseTimeLoadBalancer::updateWeights(const std::vector<HostSharedPtr>& hosts) {
+void LeastResponseTimeLoadBalancer::updateWeights(const std::vector<HostSharedPtr>& hosts) const {
   ENVOY_LOG(error, "tetraloba: least_request_lb.cc:59: updateWeights() called!");
   if (hosts.empty()) {
     ENVOY_LOG(warn, "tetraloba: least_request_lb.cc:59: No hosts available to update weights.");
@@ -136,7 +136,7 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
     }
     // 平均応答時間が変化していればcとμを再計算。
     if (rtt != host_rtts_[i]) {
-      double rho = static_cast<double>(lambda) / calculatePredictedMu(previous_c, lambda, average_rtt);
+      double rho = static_cast<double>(lambda) / calculatePredictedMu(c, lambda, rtt);
       c_ssthresh = calculateCSsthresh(c_ssthresh, rho, target_rho);
       c = calculatePredictedC(c, rho, target_rho, c_ssthresh); // #todo
       mu = calculatePredictedMu(lambda, rtt, c); // #todo
