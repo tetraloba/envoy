@@ -84,7 +84,7 @@ u_int32_t LeastResponseTimeLoadBalancer::calculatePredictedC(u_int32_t previous_
 // std::pair<double, double> LeastResponseTimeLoadBalancer::calculateWeight(u_int32_t c1, u_int64_t mu1, u_int32_t c2, u_int64_t mu2) const {
   
 // }
-void LeastResponseTimeLoadBalancer::updateWeights(const u_int32_t lambda, const std::vector<HostSharedPtr>& hosts) const {
+void LeastResponseTimeLoadBalancer::updateWeights(const u_int64_t lambda, const std::vector<HostSharedPtr>& hosts) const {
   ENVOY_LOG(error, "tetraloba: least_request_lb.cc:59: updateWeights() called!");
   if (hosts.empty()) {
     ENVOY_LOG(warn, "tetraloba: least_request_lb.cc:59: No hosts available to update weights.");
