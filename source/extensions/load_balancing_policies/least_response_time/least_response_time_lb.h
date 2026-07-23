@@ -115,6 +115,10 @@ protected:
 
     EdfLoadBalancerBase::refresh(priority);
   }
+  // force the use of EDF (with hostWeight()). see common/load_balancer_impl.cc
+  bool shouldCreateEdf(const HostVector&) const override {
+    return true;
+  }
 
 private:
   void refreshHostSource(const HostsSource&) override {}
@@ -123,8 +127,6 @@ private:
                                         const HostsSource& source) override;
   HostConstSharedPtr unweightedHostPick(const HostVector& hosts_to_use,
                                         const HostsSource& source) override;
-  HostSharedPtr unweightedHostPickFullScan(const HostVector& hosts_to_use);
-  HostSharedPtr unweightedHostPickNChoices(const HostVector& hosts_to_use);
 
   const uint32_t choice_count_;
   static double calculateAveRtt(double lambda, double mu, u_int32_t c);

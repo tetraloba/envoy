@@ -166,106 +166,18 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
   return host_weights_[target_host_index];
 }
 
-// TODO:tetraloba
-// 以下は使わないはず？
-
-// HostConstSharedPtr LeastResponseTimeLoadBalancer::unweightedHostPeek(const HostVector&,
-//                                                                 const HostsSource&) {
-//   ENVOY_LOG(info, "tetraloba: least_response_time_lb.cc:55: unweightedHostPeek() called!");
-//   // LeastResponseTimeLoadBalancer can not do deterministic preconnecting, because
-//   // any other thread might select the least-requested-host between preconnect and
-//   // host-pick, and change the rq_active checks.
-//   return nullptr;
-// }
-
-// HostConstSharedPtr LeastResponseTimeLoadBalancer::unweightedHostPick(const HostVector& hosts_to_use,
-//                                                                 const HostsSource&) {
-//   ENVOY_LOG(info, "tetraloba: least_response_time_lb.cc:61: unweightedHostPick() called!");
-//   HostSharedPtr candidate_host = nullptr;
-
-//   switch (selection_method_) {
-//   case envoy::extensions::load_balancing_policies::least_response_time::v3::LeastResponseTime::FULL_SCAN:
-//     candidate_host = unweightedHostPickFullScan(hosts_to_use);
-//     break;
-//   case envoy::extensions::load_balancing_policies::least_response_time::v3::LeastResponseTime::N_CHOICES:
-//     candidate_host = unweightedHostPickNChoices(hosts_to_use);
-//     break;
-//   default:
-//     IS_ENVOY_BUG("unknown selection method specified for least response time load balancer");
-//   }
-
-//   return candidate_host;
-// }
-
-// HostSharedPtr LeastResponseTimeLoadBalancer::unweightedHostPickFullScan(const HostVector& hosts_to_use) {
-//   ENVOY_LOG(info, "tetraloba: least_response_time_lb.cc:80: unweightedHostPickFullScan() called!");
-//   HostSharedPtr candidate_host = nullptr;
-
-//   size_t num_hosts_known_tied_for_least = 0;
-
-//   const size_t num_hosts = hosts_to_use.size();
-
-//   for (size_t i = 0; i < num_hosts; ++i) {
-//     const HostSharedPtr& sampled_host = hosts_to_use[i];
-
-//     if (candidate_host == nullptr) {
-//       // Make a first choice to start the comparisons.
-//       num_hosts_known_tied_for_least = 1;
-//       candidate_host = sampled_host;
-//       continue;
-//     }
-
-//     const auto candidate_rq_duration = candidate_host->stats().rq_duration_.value();
-//     const auto sampled_rq_duration = sampled_host->stats().rq_duration_.value();
-
-//     if (sampled_rq_duration < candidate_rq_duration) {
-//       // Reset the count of known tied hosts.
-//       num_hosts_known_tied_for_least = 1;
-//       candidate_host = sampled_host;
-//     } else if (sampled_rq_duration == candidate_rq_duration) {
-//       ++num_hosts_known_tied_for_least;
-
-//       // Use reservoir sampling to select 1 unique sample from the total number of hosts N
-//       // that will tie for least response times after processing the full hosts array.
-//       //
-//       // Upon each new tie encountered, replace candidate_host with sampled_host
-//       // with probability (1 / num_hosts_known_tied_for_least percent).
-//       // The end result is that each tied host has an equal 1 / N chance of being the
-//       // candidate_host returned by this function.
-//       const size_t random_tied_host_index = random_.random() % num_hosts_known_tied_for_least;
-//       if (random_tied_host_index == 0) {
-//         candidate_host = sampled_host;
-//       }
-//     }
-//   }
-
-//   return candidate_host;
-// }
-
-// HostSharedPtr LeastResponseTimeLoadBalancer::unweightedHostPickNChoices(const HostVector& hosts_to_use) {
-//   ENVOY_LOG(info, "tetraloba: least_response_time_lb.cc:125: unweightedHostPickNChoices() called!");
-//   HostSharedPtr candidate_host = nullptr;
-
-//   for (uint32_t choice_idx = 0; choice_idx < choice_count_; ++choice_idx) {
-//     const int rand_idx = random_.random() % hosts_to_use.size();
-//     const HostSharedPtr& sampled_host = hosts_to_use[rand_idx];
-
-//     if (candidate_host == nullptr) {
-//       // Make a first choice to start the comparisons.
-//       candidate_host = sampled_host;
-//       continue;
-//     }
-
-//     const auto candidate_rq_duration = candidate_host->stats().rq_duration_.value();
-//     const auto sampled_rq_duration = sampled_host->stats().rq_duration_.value();
-
-//     if (sampled_rq_duration < candidate_rq_duration) {
-//       candidate_host = sampled_host;
-//     }
-//   }
-
-//   return candidate_host;
-// }
+// Since shouldCreateEdf() forces the use of EDF,
+// unweightedHostPeek() and unweightedHostPick are not called.
+HostConstSharedPtr LeastResponseTimeLoadBalancer::unweightedHostPeek(const HostVector&,
+                                                                const HostsSource&) {
+  ENVOY_LOG(error, "tetraloba: least_response_time_lb.cc:55: unweightedHostPeek() called!");
+  return nullptr;
+}
+HostConstSharedPtr LeastResponseTimeLoadBalancer::unweightedHostPick(const HostVector&,
+                                                                const HostsSource&) {
+  ENVOY_LOG(error, "tetraloba: least_response_time_lb.cc:61: unweightedHostPick() called!");
+  return nullptr;
+}
 
 } // namespace Upstream
 } // namespace Envoy
