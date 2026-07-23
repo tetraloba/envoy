@@ -189,14 +189,14 @@ void UpstreamRequest::cleanUp() {
   const std::chrono::nanoseconds response_time_nano = end_time_nano - start_time_nano;
   ENVOY_LOG(error, "tetraloba: UpstreamRequest::cleanUp(): response_time_nano is {}", response_time_nano.count());
   if (upstream_host_ != nullptr) {
-    const u_int64_t previous_time = upstream_host_->stats().current_time_.value();
-    if (timeslice_range < end_time_nano.count() - previous_time) { // timeslice updated
+    const u_int64_t elapsed_time = end_time_nano.count() - upstream_host_->stats().current_time_.value();
+    if (timeslice_range < elapsed_time) { // timeslice updated
       upstream_host_->stats().previous_rq_total_.set(upstream_host_->stats().current_rq_total_.value());
       upstream_host_->stats().previous_rq_duration_total_.set(upstream_host_->stats().current_rq_duration_total_.value());
       upstream_host_->stats().current_rq_total_.reset();
       upstream_host_->stats().current_rq_duration_total_.reset();
-      upstream_host_->stats().current_time_.set(end_time_nano.count());
-      ENVOY_LOG(error, "tetraloba: UpstreamRequest::cleanUp(): current_time changed to {}", upstream_host_->stats().curent_time_.value());
+      upstream_host_->stats().current_time_.add(elapsed_time);
+      ENVOY_LOG(error, "tetraloba: UpstreamRequest::cleanUp(): current_time changed to {}", upstream_host_->stats().current_time_.value());
     }
     upstream_host_->stats().current_rq_total_.inc();
     upstream_host_->stats().current_rq_duration_total_.add(response_time_nano.count());
