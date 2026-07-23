@@ -179,7 +179,6 @@ void UpstreamRequest::cleanUp() {
   }
 
   const u_int64_t timeslice_range = 1000000000; // 1 second in nanoseconds // hard coding #todo
-  const double target_rho = 0.8; // hard coding #todo
 
   Event::Dispatcher& dispatcher = parent_.callbacks()->dispatcher();
   const std::chrono::nanoseconds start_time_nano =
@@ -191,36 +190,20 @@ void UpstreamRequest::cleanUp() {
   ENVOY_LOG(error, "tetraloba: UpstreamRequest::cleanUp(): response_time_nano is {}", response_time_nano.count());
   if (upstream_host_ != nullptr) {
     const u_int64_t previous_time = upstream_host_->stats().current_time_.value();
-    if (end_time_nano.count() - previous_time < timeslice_range) {
-      upstream_host_->stats().current_rq_total_.inc();
-      upstream_host_->stats().current_rq_duration_total_.add(response_time_nano.count());
-    } else {
-      const u_int64_t lambda = upstream_host_->stats().current_rq_total_.value();
-      const u_int64_t average_rtt = upstream_host_->stats().current_rq_duration_total_.value() /
-                                        upstream_host_->stats().current_rq_total_.value();
-      const u_int64_t previous_c = upstream_host_->stats().predicted_c_.value();
-      const u_int64_t predicted_c = calculatePredictedC(
-        previous_c,
-        lambda,
-        average_rtt,
-        target_rho,
-        c_ssthresh
-      );
-      upstream_host_->stats().predicted_c_.set(predicted_c);
-      const u_int64_t predicted_mu = calculatePredictedMu(
-        lambda,
-        average_rtt
-      );
-      upstream_host_->stats().predicted_mu_.set(predicted_mu);
-
+    if (timeslice_range < end_time_nano.count() - previous_time) { // timeslice updated
+      upstream_host_->stats().previous_rq_total_.set(upstream_host_->stats().current_rq_total_.value());
+      upstream_host_->stats().previous_rq_duration_total_.set(upstream_host_->stats().current_rq_duration_total_.value());
       upstream_host_->stats().current_rq_total_.reset();
       upstream_host_->stats().current_rq_duration_total_.reset();
       upstream_host_->stats().current_time_.set(end_time_nano.count());
+      ENVOY_LOG(error, "tetraloba: UpstreamRequest::cleanUp(): current_time changed to {}", upstream_host_->stats().curent_time_.value());
     }
-
-    const u_int64_t rq_duration = upstream_host_->stats().rq_duration_.value();
-    upstream_host_->stats().rq_duration_.set((rq_duration + response_time_nano.count() * 2) / 3);
-    ENVOY_LOG(error, "tetraloba: UpstreamRequest::cleanUp(): rq_duration is {}", upstream_host_->stats().rq_duration_.value());
+    upstream_host_->stats().current_rq_total_.inc();
+    upstream_host_->stats().current_rq_duration_total_.add(response_time_nano.count());
+    ENVOY_LOG(error, "tetraloba: UpstreamRequest::cleanUp(): current_rq_total is ({}, {})",
+              upstream_host_->stats().current_rq_total_.value(),
+              upstream_host_->stats().current_rq_duration_total_.value()
+    );
   }
 
   if (per_try_timeout_ != nullptr) {
