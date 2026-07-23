@@ -190,7 +190,7 @@ void UpstreamRequest::cleanUp() {
   ENVOY_LOG(error, "tetraloba: UpstreamRequest::cleanUp(): response_time_nano is {}", response_time_nano.count());
   if (upstream_host_ != nullptr) {
     const u_int64_t elapsed_time = end_time_nano.count() - upstream_host_->stats().current_time_.value();
-    if (timeslice_range < elapsed_time) { // timeslice updated
+    if (timeslice_range < elapsed_time) { // timeslice updated // これstart_time_nanoの方で評価すべきかなあ #todo
       upstream_host_->stats().previous_rq_total_.set(upstream_host_->stats().current_rq_total_.value());
       upstream_host_->stats().previous_rq_duration_total_.set(upstream_host_->stats().current_rq_duration_total_.value());
       upstream_host_->stats().current_rq_total_.reset();

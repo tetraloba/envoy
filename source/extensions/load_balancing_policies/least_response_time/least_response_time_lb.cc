@@ -1,5 +1,6 @@
 #include <cmath>
 #include <limits>
+#include <queue>
 #include <stdexcept>
 
 #include "source/extensions/load_balancing_policies/least_response_time/least_response_time_lb.h"
@@ -51,7 +52,7 @@ u_int64_t LeastResponseTimeLoadBalancer::calculateCSsthresh(u_int64_t previous_c
     return std::numeric_limits<u_int64_t>::max();
   }
   if (rho > target_rho) {
-    return previous_c_ssthresh / 2; // ceiler #todo
+    return previous_c_ssthresh > 2 ? previous_c_ssthresh / 2 : 1;
   } else {
     return previous_c_ssthresh;
   }
@@ -63,7 +64,7 @@ u_int32_t LeastResponseTimeLoadBalancer::calculatePredictedC(u_int32_t previous_
   if (previous_c < c_ssthresh) {
     return previous_c == 0 ? 1 : 2 * previous_c;
   } else {
-    return rho > target_rho ? previous_c / 2 : previous_c + 1; // ceiler? #todo
+    return rho > target_rho ? (previous_c > 2 ? previous_c / 2 : 1) : previous_c + 1;
   }
 }
 
@@ -76,26 +77,23 @@ void LeastResponseTimeLoadBalancer::updateWeights(const std::vector<HostSharedPt
     ENVOY_LOG(warn, "tetraloba: least_request_lb.cc:59: No hosts available to update weights.");
     return;
   }
-  std::vector<double> host_temporarily_weights(hosts.size());
-  host_temporarily_weights[0] = 1.0; // host 0 の重み1を基準とする
-  u_int32_t max_weight_index = 0; // 重みが最大であるホストのindex
-  for (u_int32_t i = 1; i < host_cs_.size(); i++) {
-    // 重み設定
-    u_int32_t weight = 0; // 1-128
-    // #todo
-    (void)max_weight_index; // to avoid -Werror -Wunused-variable
-    ENVOY_LOG(debug, "tetraloba: least_request_lb.cc:11: Setting weight {} for host {}", weight, hosts[i]->address()->asString());
-    host_weights_[i] = weight;
+  u_int32_t lambda_per_weight = lambda > 128 ? lambda / 128 : 1;
+  u_int32_t weight_sum = lambda > 128 ? 128 : lambda // lambda / lambda_per_weight
+  std::priority_queue<std::pair<u_int64_t, u_int32_t>> host_expected_rtts; // (rtt, host_index)
+  for (u_int32_t i = 0; i < host_cs_.size(); i++) {
+    host_weights_[i] = 0;
+    u_int64_t expected_rtt = calculateAveRtt(lambda_per_weight, host_mus_[i], host_cs_[i]); // weightが1の場合の平均応答時間
+    host_expected_rtts.push(std::make_pair(expected_rtt, i));
   }
-  // // 最適重み決定 ニブタンとかで適当に良い感じに頑張る。
-  // for (const auto& host_set : prioritySet().hostSetsPerPriority()) {
-  //   for (const auto& host : host_set->hosts()) {
-  //     const double weight = hostWeight(*host);
-  //     // 重み設定
-  //     ENVOY_LOG(debug, "tetraloba: least_request_lb.cc:11: Setting weight {} for host {}", weight, host->address()->asString());
-  //     host->setDynamicWeight(weight); // DynamicWeightを使うのか別途LeastResponseTimeLoadBalancer.weights_を用意してしまうか？ #todo
-  //   }
-  // }
+  for (u_int32_t w = 0; w < weight_sum; w++) {
+    auto [rtt, host_index] = host_expected_rtts.top(); host_expected_rtts.pop();
+    host_weights_[host_index]++;
+    u_int64_t expected_rtt = calculateAveRtt((host_weights_[host_index] + 1) * lambda_per_weight, host_mus_[i], host_cs_[i]); // weightを1増やした場合の応答時間
+    host_expected_rtts.push(std::make_pair(expected_rtt, i));
+  }
+  for (u_int32_t i = 1; i < host_cs_.size(); i++) {
+    ENVOY_LOG(debug, "tetraloba: least_request_lb.cc:11: Setting weight {} for host {}", host_weights_[i], hosts[i]->address()->asString());
+  }
 }
 
 double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const {
@@ -106,7 +104,8 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
   // hard codingの解消(config)
   const u_int64_t timeslice_range = 1000000000; // 1 second in nanoseconds // hard coding
   const double target_rho = 0.8; // hard coding
-  u_int64_t max_current_time = 0;
+
+  u_int64_t max_current_time = 0; // 厳密には現在時刻またはリクエストの開始時刻であるべき #todo
   std::vector<HostSharedPtr> hosts; // hostの一次元配列(shared_pointer)
   for (const auto& host_set : priority_set_.hostSetsPerPriority()) {
     for (const auto& host_ptr : host_set->hosts()) {
@@ -114,6 +113,9 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
     }
   }
   for (const auto& host : hosts) {
+    if (host->stats().current_time_.value() == 0) {
+      return 1; // まだ1つもリクエストを処理し終えていない(=平均応答時間が分からない)hostが有るので、全てのhostのweightは1(=ラウンドロビン)
+    }
     max_current_time = max_current_time < host->stats().current_time_.value() ? host->stats().current_time_.value() : max_current_time;
   }
 
@@ -126,20 +128,23 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
     u_int64_t c_ssthresh = host_c_ssthresh_[i]; // cのスロースタート閾値
     u_int32_t c = host_cs_[i]; // 窓口数
     u_int64_t mu = host_mus_[i]; // サービス率
-    // current_timeがmax_current_time - time_slice_size以前のものはcurrent_から計算して、以降のものはprevious_から計算する。
+    // current_time_がmax_current_time - time_slice_size以前のものはcurrent_*から計算して、以降のものはprevious_*から計算する。
     if (host->stats().current_time_.value() <= max_current_time - timeslice_range) {
       lambda = host->stats().current_rq_total_.value();
-      rtt = host->stats().current_rq_duration_total_.value() / host->stats().current_rq_total_.value();
+      rtt = host->stats().current_rq_duration_total_.value() / lambda; // current_time_.value() != 0 => lambda > 0
     } else {
       lambda = host->stats().previous_rq_total_.value();
-      rtt = host->stats().previous_rq_duration_total_.value() / host->stats().previous_rq_total_.value();
+      if (lambda == 0) {
+        return 1; // まだtimeslice秒間分の応答時間が収集できていないhostが有るので、全てのhostのweightは1(=ラウンドロビン)
+      }
+      rtt = host->stats().previous_rq_duration_total_.value() / lambda;
     }
     // 平均応答時間が変化していればcとμを再計算。
     if (rtt != host_rtts_[i]) {
       double rho = static_cast<double>(lambda) / calculatePredictedMu(c, lambda, rtt);
       c_ssthresh = calculateCSsthresh(c_ssthresh, rho, target_rho);
-      c = calculatePredictedC(c, rho, target_rho, c_ssthresh); // #todo
-      mu = calculatePredictedMu(lambda, rtt, c); // #todo
+      c = calculatePredictedC(c, rho, target_rho, c_ssthresh);
+      mu = calculatePredictedMu(lambda, rtt, c);
       host_rtts_[i] = rtt;
     }
     // cかμが変化していれば重みを再計算 (updateWeights())
