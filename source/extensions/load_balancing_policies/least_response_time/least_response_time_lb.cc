@@ -46,7 +46,7 @@ u_int64_t LeastResponseTimeLoadBalancer::calculatePredictedMu(u_int32_t c, u_int
   (void)func; (void)c; (void)lambda; (void)average_rtt; // avoid -Werror -Wunused-parameter
   return 0;
 }
-u_int64_t calculateCSsthresh(u_int64_t previous_c_ssthresh, double rho, double target_rho) {
+u_int64_t LeastResponseTimeLoadBalancer::calculateCSsthresh(u_int64_t previous_c_ssthresh, double rho, double target_rho) {
   if (previous_c_ssthresh == 0) {
     return std::numeric_limits<u_int64_t>::max();
   }
