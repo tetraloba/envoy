@@ -40,12 +40,25 @@ double LeastResponseTimeLoadBalancer::calculateAveRtt(double lambda, double mu, 
   double aveRTT = 1000.0 * (std::pow(lambda / mu_per_core, c) * mu_per_core / (factorial(c - 1) * std::pow(c * mu_per_core - lambda, 2)) * p0 + (1.0 / mu_per_core));
   return aveRTT;
 }
-u_int64_t LeastResponseTimeLoadBalancer::calculatePredictedMu(u_int32_t c, u_int64_t lambda, u_int64_t average_rtt) {
+u_int64_t LeastResponseTimeLoadBalancer::calculatePredictedMu(u_int32_t c, double lambda, double average_rtt) {
   auto func = [](u_int32_t c, double mu, double lambda, double average_rtt) {return calculateAveRtt(c, mu, lambda) - average_rtt;};
   /* func(mu) = 0 となる mu を二分探索 */
-  // #todo
-  (void)func; (void)c; (void)lambda; (void)average_rtt; // avoid -Werror -Wunused-parameter
-  return 0;
+  double mu_left = lambda + 1.0 / average_rtt;
+  double mu_right = lambda + c / average_rtt;
+  while (true) {
+    double mu_mid = (mu_left + mu_right) / 2;
+    if (mu_right - mu_left < 1) { // 探索範囲が十分に狭まった
+      return static_cast<u_int64_t>(mu_mid);
+    }
+    double res = func(c, mu_mid, lambda, average_rtt);
+    if (res < 0) { // mu_mid(予測mu)が過大
+      mu_right = mu_mid;
+    } else if (res > 0) { // mu_mid(予測mu)が過小
+      mu_left = mu_mid;
+    } else {
+      return static_cast<u_int64_t>(mu_mid);
+    }
+  }
 }
 u_int64_t LeastResponseTimeLoadBalancer::calculateCSsthresh(u_int64_t previous_c_ssthresh, double rho, double target_rho) {
   if (previous_c_ssthresh == 0) {
