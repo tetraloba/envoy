@@ -84,14 +84,14 @@ u_int32_t LeastResponseTimeLoadBalancer::calculatePredictedC(u_int32_t previous_
 // std::pair<double, double> LeastResponseTimeLoadBalancer::calculateWeight(u_int32_t c1, u_int64_t mu1, u_int32_t c2, u_int64_t mu2) const {
   
 // }
-void LeastResponseTimeLoadBalancer::updateWeights(const std::vector<HostSharedPtr>& hosts) const {
+void LeastResponseTimeLoadBalancer::updateWeights(const u_int32_t lambda, const std::vector<HostSharedPtr>& hosts) const {
   ENVOY_LOG(error, "tetraloba: least_request_lb.cc:59: updateWeights() called!");
   if (hosts.empty()) {
     ENVOY_LOG(warn, "tetraloba: least_request_lb.cc:59: No hosts available to update weights.");
     return;
   }
   u_int32_t lambda_per_weight = lambda > 128 ? lambda / 128 : 1;
-  u_int32_t weight_sum = lambda > 128 ? 128 : lambda // lambda / lambda_per_weight
+  u_int32_t weight_sum = lambda > 128 ? 128 : lambda; // lambda / lambda_per_weight
   std::priority_queue<std::pair<u_int64_t, u_int32_t>> host_expected_rtts; // (rtt, host_index)
   for (u_int32_t i = 0; i < host_cs_.size(); i++) {
     host_weights_[i] = 0;
@@ -101,8 +101,8 @@ void LeastResponseTimeLoadBalancer::updateWeights(const std::vector<HostSharedPt
   for (u_int32_t w = 0; w < weight_sum; w++) {
     auto [rtt, host_index] = host_expected_rtts.top(); host_expected_rtts.pop();
     host_weights_[host_index]++;
-    u_int64_t expected_rtt = calculateAveRtt((host_weights_[host_index] + 1) * lambda_per_weight, host_mus_[i], host_cs_[i]); // weightを1増やした場合の応答時間
-    host_expected_rtts.push(std::make_pair(expected_rtt, i));
+    u_int64_t expected_rtt = calculateAveRtt((host_weights_[host_index] + 1) * lambda_per_weight, host_mus_[host_index], host_cs_[host_index]); // weightを1増やした場合の応答時間
+    host_expected_rtts.push(std::make_pair(expected_rtt, host_index));
   }
   for (u_int32_t i = 1; i < host_cs_.size(); i++) {
     ENVOY_LOG(debug, "tetraloba: least_request_lb.cc:11: Setting weight {} for host {}", host_weights_[i], hosts[i]->address()->asString());
@@ -135,6 +135,7 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
   u_int32_t target_host_index;
   u_int32_t i = 0; // host index
   bool recalc_weight_required = false;
+  u_int64_t lambda_sum = 0;
   for (const auto& host : hosts) {
     u_int64_t lambda = host_lambdas_[i]; // 到着率
     u_int64_t rtt = host_rtts_[i]; // 平均応答時間
@@ -152,6 +153,7 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
       }
       rtt = host->stats().previous_rq_duration_total_.value() / lambda;
     }
+    lambda_sum += lambda;
     // 平均応答時間が変化していればcとμを再計算。
     if (rtt != host_rtts_[i]) {
       double rho = static_cast<double>(lambda) / calculatePredictedMu(c, lambda, rtt);
@@ -173,7 +175,7 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
     i++;
   }
   if (recalc_weight_required) {
-    updateWeights(hosts);
+    updateWeights(lambda_sum, hosts);
   }
 
   // if (!noHostsAreInSlowStart()) {
