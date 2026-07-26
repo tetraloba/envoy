@@ -49,11 +49,7 @@ public:
                 ? absl::optional<Runtime::Double>(
                       {least_response_time_config->active_request_bias(), runtime})
                 : absl::nullopt) {
-    ENVOY_LOG(trace, "tetraloba: least_response_time_lb.h:27: LeastResponseTimeLoadBalancer::LeastResponseTimeLoadBalancer() called! (trace)");
-    ENVOY_LOG(debug, "tetraloba: least_response_time_lb.h:27: LeastResponseTimeLoadBalancer::LeastResponseTimeLoadBalancer() called! (debug)");
-    ENVOY_LOG(info, "tetraloba: least_response_time_lb.h:27: LeastResponseTimeLoadBalancer::LeastResponseTimeLoadBalancer() called! (info)");
-    ENVOY_LOG(warn, "tetraloba: least_response_time_lb.h:27: LeastResponseTimeLoadBalancer::LeastResponseTimeLoadBalancer() called! (warn)");
-    ENVOY_LOG(error, "tetraloba: least_response_time_lb.h:27: LeastResponseTimeLoadBalancer::LeastResponseTimeLoadBalancer() called! (error)");
+    ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::LeastResponseTimeLoadBalancer() called!");
     initialize();
     int host_num = 0;
     for (const auto& host_set : priority_set_.hostSetsPerPriority()) {
@@ -83,11 +79,7 @@ public:
                       {least_response_time_config.active_request_bias(), runtime})
                 : absl::nullopt),
         selection_method_(least_response_time_config.selection_method()) {
-    ENVOY_LOG(trace, "tetraloba: least_response_time_lb.h:60: LeastResponseTimeLoadBalancer::LeastResponseTimeLoadBalancer() called! (trace)");
-    ENVOY_LOG(debug, "tetraloba: least_response_time_lb.h:60: LeastResponseTimeLoadBalancer::LeastResponseTimeLoadBalancer() called! (debug)");
-    ENVOY_LOG(info, "tetraloba: least_response_time_lb.h:60: LeastResponseTimeLoadBalancer::LeastResponseTimeLoadBalancer() called! (info)");
-    ENVOY_LOG(warn, "tetraloba: least_response_time_lb.h:60: LeastResponseTimeLoadBalancer::LeastResponseTimeLoadBalancer() called! (warn)");
-    ENVOY_LOG(error, "tetraloba: least_response_time_lb.h:60: LeastResponseTimeLoadBalancer::LeastResponseTimeLoadBalancer() called! (error)");
+    ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::LeastResponseTimeLoadBalancer() called!");
     initialize();
     int host_num = 0;
     for (const auto& host_set : priority_set_.hostSetsPerPriority()) {

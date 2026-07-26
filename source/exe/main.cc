@@ -14,11 +14,7 @@
  * after setting up command line options.
  */
 int main(int argc, char** argv) {
-  ENVOY_LOG_MISC(info, "tetraloba: main.cc:63 main() called! info");
-  ENVOY_LOG_MISC(warn, "tetraloba: main.cc:63 main() called! warn");
-  ENVOY_LOG_MISC(error, "tetraloba: main.cc:63 main() called! error");
-  std::cout << "tetraloba: main.cc:63 main() called! stdout" << std::endl;
-  std::cerr << "tetraloba: main.cc:63 main() called! stderr" << std::endl;
+  ENVOY_LOG_MISC(debug, "tetraloba: main.cc:63 main() called!");
 #ifdef WIN32
   Envoy::ServiceBase service;
   if (!Envoy::ServiceBase::TryRunAsService(service)) {

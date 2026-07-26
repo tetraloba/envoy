@@ -85,9 +85,9 @@ u_int32_t LeastResponseTimeLoadBalancer::calculatePredictedC(u_int32_t previous_
   
 // }
 void LeastResponseTimeLoadBalancer::updateWeights(const u_int64_t lambda, const std::vector<HostSharedPtr>& hosts) const {
-  ENVOY_LOG(error, "tetraloba: least_request_lb.cc:59: updateWeights() called!");
+  ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::updateWeights() called!");
   if (hosts.empty()) {
-    ENVOY_LOG(warn, "tetraloba: least_request_lb.cc:59: No hosts available to update weights.");
+    ENVOY_LOG(warn, "tetraloba: LeastResponseTimeLoadBalancer::updateWeights(): No hosts available to update weights.");
     return;
   }
   u_int32_t lambda_per_weight = lambda > 128 ? lambda / 128 : 1;
@@ -105,12 +105,12 @@ void LeastResponseTimeLoadBalancer::updateWeights(const u_int64_t lambda, const 
     host_expected_rtts.push(std::make_pair(expected_rtt, host_index));
   }
   for (u_int32_t i = 1; i < host_cs_.size(); i++) {
-    ENVOY_LOG(debug, "tetraloba: least_request_lb.cc:11: Setting weight {} for host {}", host_weights_[i], hosts[i]->address()->asString());
+    ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::updateWeights(): Setting weight {} for host {}", host_weights_[i], hosts[i]->address()->asString());
   }
 }
 
 double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const {
-  ENVOY_LOG(info, "tetraloba: least_response_time_lb.cc:8: hostWeight() called!");
+  ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::hostWeight() called!");
   // TODO:tetraloba
   // EdfLoadBalancerはhost毎にhostWeight()を呼び出すので、hostWeight()内で全hostを探索するとhost数をnとしてO(n^2)になってしまう。
   // TODO:tetraloba
@@ -182,7 +182,7 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
   //   return applySlowStartFactor(host_weight, host);
   // }
 
-  ENVOY_LOG(info, "tetraloba: least_response_time_lb.cc:8: hostWeight(): host_weight: " + std::to_string(host_weights_[i]));
+  ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::hostWeight(): host_weight: " + std::to_string(host_weights_[i]));
   return host_weights_[target_host_index];
 }
 
@@ -190,12 +190,12 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
 // unweightedHostPeek() and unweightedHostPick are not called.
 HostConstSharedPtr LeastResponseTimeLoadBalancer::unweightedHostPeek(const HostVector&,
                                                                 const HostsSource&) {
-  ENVOY_LOG(error, "tetraloba: least_response_time_lb.cc:55: unweightedHostPeek() called!");
+  ENVOY_LOG(error, "tetraloba: LeastResponseTimeLoadBalancer::unweightedHostPeek called!");
   return nullptr;
 }
 HostConstSharedPtr LeastResponseTimeLoadBalancer::unweightedHostPick(const HostVector&,
                                                                 const HostsSource&) {
-  ENVOY_LOG(error, "tetraloba: least_response_time_lb.cc:61: unweightedHostPick() called!");
+  ENVOY_LOG(error, "tetraloba: LeastResponseTimeLoadBalancer::unweightedHostPick called!");
   return nullptr;
 }
 

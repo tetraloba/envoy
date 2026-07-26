@@ -131,7 +131,7 @@ LoadBalancerBase::LoadBalancerBase(const PrioritySet& priority_set, ClusterLbSta
                                    uint32_t healthy_panic_threshold)
     : stats_(stats), runtime_(runtime), random_(random),
       default_healthy_panic_percent_(healthy_panic_threshold), priority_set_(priority_set) {
-  ENVOY_LOG(error, "tetraloba: load_balancer_impl.h:128: LoadBalancerBase::LoadBalancerBase() called!");
+  ENVOY_LOG(debug, "tetraloba: LoadBalancerBase::LoadBalancerBase() called!");
   for (auto& host_set : priority_set_.hostSetsPerPriority()) {
     recalculatePerPriorityState(host_set->priority(), priority_set_, per_priority_load_,
                                 per_priority_health_, per_priority_degraded_, total_healthy_hosts_);
@@ -387,7 +387,7 @@ void LoadBalancerBase::recalculateLoadInTotalPanic() {
 
 std::pair<HostSet&, LoadBalancerBase::HostAvailability>
 LoadBalancerBase::chooseHostSet(LoadBalancerContext* context, uint64_t hash) const {
-  ENVOY_LOG(error, "tetraloba: load_balancer_impl.h:388: LoadBalancerBase::chooseHostSet() called!");
+  ENVOY_LOG(debug, "tetraloba: LoadBalancerBase::chooseHostSet() called!");
   if (context) {
     const auto priority_loads = context->determinePriorityLoad(
         priority_set_, per_priority_load_, Upstream::RetryPriority::defaultPriorityMapping);
@@ -441,7 +441,7 @@ ZoneAwareLoadBalancerBase::ZoneAwareLoadBalancerBase(
               : false),
       locality_weighted_balancing_(locality_config.has_value() &&
                                    locality_config->has_locality_weighted_lb_config()) {
-  ENVOY_LOG(error, "tetraloba: load_balancer_impl.h:420: ZoneAwareLoadBalancerBase::ZoneAwareLoadBalancerBase() called!");
+  ENVOY_LOG(debug, "tetraloba: ZoneAwareLoadBalancerBase::ZoneAwareLoadBalancerBase() called!");
   ASSERT(!priority_set.hostSetsPerPriority().empty());
   resizePerPriorityState();
   priority_update_cb_ = priority_set_.addPriorityUpdateCb(
@@ -621,7 +621,7 @@ bool ZoneAwareLoadBalancerBase::earlyExitNonLocalityRouting() {
 }
 
 HostSelectionResponse ZoneAwareLoadBalancerBase::chooseHost(LoadBalancerContext* context) {
-  ENVOY_LOG(error, "tetraloba: load_balancer_impl.cc:622: ZoneAwareLoadBalancerBase::chooseHost() called!");
+  ENVOY_LOG(debug, "tetraloba: ZoneAwareLoadBalancerBase::chooseHost() called!");
   HostConstSharedPtr host;
 
   const size_t max_attempts = context ? context->hostSelectionRetryCount() + 1 : 1;
@@ -759,7 +759,7 @@ uint32_t ZoneAwareLoadBalancerBase::tryChooseLocalLocalityHosts(const HostSet& h
 
 absl::optional<ZoneAwareLoadBalancerBase::HostsSource>
 ZoneAwareLoadBalancerBase::hostSourceToUse(LoadBalancerContext* context, uint64_t hash) const {
-  ENVOY_LOG(error, "tetraloba: load_balancer_impl.h:760: ZoneAwareLoadBalancerBase::hostSourceToUse() called!");
+  ENVOY_LOG(debug, "tetraloba: ZoneAwareLoadBalancerBase::hostSourceToUse() called!");
   auto host_set_and_source = chooseHostSet(context, hash);
 
   // The second argument tells us which availability we should target from the selected host set.
@@ -854,7 +854,7 @@ ZoneAwareLoadBalancerBase::hostSourceToUse(LoadBalancerContext* context, uint64_
 }
 
 const HostVector& ZoneAwareLoadBalancerBase::hostSourceToHosts(HostsSource hosts_source) const {
-  ENVOY_LOG(error, "tetraloba: load_balancer_impl.h:855: ZoneAwareLoadBalancerBase::hostSourceToHosts() called!");
+  ENVOY_LOG(debug, "tetraloba: ZoneAwareLoadBalancerBase::hostSourceToHosts() called!");
   const HostSet& host_set = *priority_set_.hostSetsPerPriority()[hosts_source.priority_];
   switch (hosts_source.source_type_) {
   case HostsSource::SourceType::AllHosts:
@@ -893,7 +893,7 @@ EdfLoadBalancerBase::EdfLoadBalancerBase(
                                                slow_start_config.value(), min_weight_percent, 10) /
                                                100.0
                                          : 0.1) {
-  ENVOY_LOG(error, "tetraloba: load_balancer_impl.h:873: EdfLoadBalancerBase::EdfLoadBalancerBase() called!");
+  ENVOY_LOG(debug, "tetraloba: EdfLoadBalancerBase::EdfLoadBalancerBase() called!");
   // We fully recompute the schedulers for a given host set here on membership change, which is
   // consistent with what other LB implementations do (e.g. thread aware).
   // The downside of a full recompute is that time complexity is O(n * log n),
@@ -914,7 +914,7 @@ EdfLoadBalancerBase::EdfLoadBalancerBase(
 }
 
 void EdfLoadBalancerBase::initialize() {
-  ENVOY_LOG_MISC(info, "tetraloba: load_balancer_impl.h:908: EdfLoadBalancerBase::initialize() called");
+  ENVOY_LOG(debug, "tetraloba: EdfLoadBalancerBase::initialize() called");
   for (uint32_t priority = 0; priority < priority_set_.hostSetsPerPriority().size(); ++priority) {
     refresh(priority);
   }
@@ -1054,7 +1054,7 @@ HostConstSharedPtr EdfLoadBalancerBase::peekAnotherHost(LoadBalancerContext* con
 }
 
 HostConstSharedPtr EdfLoadBalancerBase::chooseHostOnce(LoadBalancerContext* context) {
-  ENVOY_LOG(error, "tetraloba: load_balancer_impl.cc:1052: EdfLoadBalancerBase::chooseHostOnce() called!");
+  ENVOY_LOG(debug, "tetraloba: EdfLoadBalancerBase::chooseHostOnce() called!");
   const absl::optional<HostsSource> hosts_source = hostSourceToUse(context, random(false));
   if (!hosts_source) {
     return nullptr;

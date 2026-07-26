@@ -187,7 +187,7 @@ void UpstreamRequest::cleanUp() {
   const std::chrono::nanoseconds end_time_nano =
       std::chrono::duration_cast<std::chrono::nanoseconds>(end_time.time_since_epoch());
   const std::chrono::nanoseconds response_time_nano = end_time_nano - start_time_nano;
-  ENVOY_LOG(error, "tetraloba: UpstreamRequest::cleanUp(): response_time_nano is {}", response_time_nano.count());
+  ENVOY_LOG(debug, "tetraloba: UpstreamRequest::cleanUp(): response_time_nano is {}", response_time_nano.count());
   if (upstream_host_ != nullptr) {
     const u_int64_t elapsed_time = end_time_nano.count() - upstream_host_->stats().current_time_.value();
     if (timeslice_range < elapsed_time) { // timeslice updated // これstart_time_nanoの方で評価すべきかなあ #todo
@@ -196,11 +196,11 @@ void UpstreamRequest::cleanUp() {
       upstream_host_->stats().current_rq_total_.reset();
       upstream_host_->stats().current_rq_duration_total_.reset();
       upstream_host_->stats().current_time_.add(elapsed_time);
-      ENVOY_LOG(error, "tetraloba: UpstreamRequest::cleanUp(): current_time changed to {}", upstream_host_->stats().current_time_.value());
+      ENVOY_LOG(debug, "tetraloba: UpstreamRequest::cleanUp(): current_time changed to {}", upstream_host_->stats().current_time_.value());
     }
     upstream_host_->stats().current_rq_total_.inc();
     upstream_host_->stats().current_rq_duration_total_.add(response_time_nano.count());
-    ENVOY_LOG(error, "tetraloba: UpstreamRequest::cleanUp(): current_rq_total is ({}, {})",
+    ENVOY_LOG(debug, "tetraloba: UpstreamRequest::cleanUp(): current_rq_total is ({}, {})",
               upstream_host_->stats().current_rq_total_.value(),
               upstream_host_->stats().current_rq_duration_total_.value()
     );
@@ -255,7 +255,7 @@ void UpstreamRequest::cleanUp() {
   stream_info_.onRequestComplete();
   upstreamLog(AccessLog::AccessLogType::UpstreamEnd);
 
-  ENVOY_LOG(error, "tetraloba: UpstreamRequest::cleanUp(): rq_active is {}.", upstream_host_->stats().rq_active_.value());
+  ENVOY_LOG(debug, "tetraloba: UpstreamRequest::cleanUp(): rq_active is {}.", upstream_host_->stats().rq_active_.value());
 
   while (downstream_data_disabled_ != 0) {
     parent_.callbacks()->onDecoderFilterBelowWriteBufferLowWatermark();
