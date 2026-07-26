@@ -132,7 +132,7 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
     max_current_time = max_current_time < host->stats().current_time_.value() ? host->stats().current_time_.value() : max_current_time;
   }
 
-  u_int32_t target_host_index;
+  u_int32_t target_host_index = std::numeric_limits<u_int32_t>::max();
   u_int32_t i = 0; // host index
   bool recalc_weight_required = false;
   u_int64_t lambda_sum = 0;
@@ -181,8 +181,11 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
   // if (!noHostsAreInSlowStart()) {
   //   return applySlowStartFactor(host_weight, host);
   // }
+  if (host_weights_.size() != hosts.size() || hosts.size() <= target_host_index) {
+    ENVOY_LOG(error, "tetraloba: LeastResponseTimeLoadBalancer::hostWeight(): target host not found!");
+  }
 
-  ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::hostWeight(): host_weight: " + std::to_string(host_weights_[i]));
+  ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::hostWeight(): host_weight: " + std::to_string(host_weights_[target_host_index]));
   return host_weights_[target_host_index];
 }
 
