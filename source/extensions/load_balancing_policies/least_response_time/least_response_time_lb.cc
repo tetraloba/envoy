@@ -188,7 +188,7 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
   if (host_specs_.size() != hosts.size() || hosts.size() <= target_host_index) {
     ENVOY_LOG(error, "tetraloba: LeastResponseTimeLoadBalancer::hostWeight(): target host index " + std::to_string(target_host_index) + " not found!");
   }
-  ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::hostWeight(): host_weight of " + target_host->address()->asString() + ": " + std::to_string(host_specs_[target_host_index].weight));
+  ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::hostWeight(): host_weight of " + target_host.address()->asString() + ": " + std::to_string(host_specs_[target_host_index].weight));
   return host_specs_[target_host_index].weight;
 }
 
