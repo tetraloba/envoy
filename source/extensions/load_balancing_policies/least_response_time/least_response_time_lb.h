@@ -5,6 +5,15 @@
 namespace Envoy {
 namespace Upstream {
 
+struct LBHostSpec {
+  u_int32_t c = 0;
+  u_int32_t c_ssthresh = 0;
+  u_int64_t mu = 0;
+  u_int64_t lambda = 0;
+  u_int64_t rtt = 0;
+  u_int64_t weight = 0;
+};
+
 /**
  * Weighted Least Response Time load balancer.
  *
@@ -51,15 +60,6 @@ public:
                 : absl::nullopt) {
     ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::LeastResponseTimeLoadBalancer() called!");
     initialize();
-    int host_num = 0;
-    for (const auto& host_set : priority_set_.hostSetsPerPriority()) {
-      host_num += host_set->hosts().size();
-    }
-    host_lambdas_.resize(host_num);
-    host_rtts_.resize(host_num);
-    host_cs_.resize(host_num);
-    host_mus_.resize(host_num);
-    host_weights_.resize(host_num);
   }
 
   LeastResponseTimeLoadBalancer(
@@ -81,15 +81,6 @@ public:
         selection_method_(least_response_time_config.selection_method()) {
     ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::LeastResponseTimeLoadBalancer() called!");
     initialize();
-    int host_num = 0;
-    for (const auto& host_set : priority_set_.hostSetsPerPriority()) {
-      host_num += host_set->hosts().size();
-    }
-    host_lambdas_.resize(host_num);
-    host_rtts_.resize(host_num);
-    host_cs_.resize(host_num);
-    host_mus_.resize(host_num);
-    host_weights_.resize(host_num);
   }
 
 protected:
@@ -127,12 +118,7 @@ private:
   static u_int64_t calculatePredictedMu(u_int32_t c, double lambda, double average_rtt);
   void updateWeights(const u_int64_t lambda_sum, const std::vector<HostSharedPtr>& hosts) const;
 
-  mutable std::vector<u_int64_t> host_lambdas_;
-  mutable std::vector<u_int64_t> host_rtts_;
-  mutable std::vector<u_int64_t> host_c_ssthresh_;
-  mutable std::vector<u_int32_t> host_cs_;
-  mutable std::vector<u_int64_t> host_mus_;
-  mutable std::vector<u_int64_t> host_weights_;
+  mutable std::vector<LBHostSpec> host_specs_;
 
   // The exponent used to calculate host weights can be configured via runtime. We cache it for
   // performance reasons and refresh it in `LeastResponseTimeLoadBalancer::refresh(uint32_t priority)`

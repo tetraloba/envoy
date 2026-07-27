@@ -11,8 +11,6 @@
 namespace Envoy {
 namespace Upstream {
 
-// TODO:tetraloba
-// implement
 double factorial(u_int32_t n) {
   if (n < 0) {
     throw std::invalid_argument("Factorial is not defined for negative numbers.");
@@ -92,20 +90,21 @@ void LeastResponseTimeLoadBalancer::updateWeights(const u_int64_t lambda, const 
   }
   u_int32_t lambda_per_weight = lambda > 128 ? lambda / 128 : 1;
   u_int32_t weight_sum = lambda > 128 ? 128 : lambda; // lambda / lambda_per_weight
+  // greedy algorithm
   std::priority_queue<std::pair<u_int64_t, u_int32_t>> host_expected_rtts; // (rtt, host_index)
-  for (u_int32_t i = 0; i < host_cs_.size(); i++) {
-    host_weights_[i] = 0;
-    u_int64_t expected_rtt = calculateAveRtt(lambda_per_weight, host_mus_[i], host_cs_[i]); // weightが1の場合の平均応答時間
+  for (u_int32_t i = 0; i < host_specs_.size(); i++) {
+    host_specs_[i].weight = 0;
+    u_int64_t expected_rtt = calculateAveRtt(lambda_per_weight, host_specs_[i].mu, host_specs_[i].c); // weightが1の場合の平均応答時間
     host_expected_rtts.push(std::make_pair(expected_rtt, i));
   }
   for (u_int32_t w = 0; w < weight_sum; w++) {
     auto [rtt, host_index] = host_expected_rtts.top(); host_expected_rtts.pop();
-    host_weights_[host_index]++;
-    u_int64_t expected_rtt = calculateAveRtt((host_weights_[host_index] + 1) * lambda_per_weight, host_mus_[host_index], host_cs_[host_index]); // weightを1増やした場合の応答時間
+    host_specs_[host_index].weight++;
+    u_int64_t expected_rtt = calculateAveRtt((host_specs_[host_index].weight + 1) * lambda_per_weight, host_specs_[host_index].mu, host_specs_[host_index].c); // weightを1増やした場合の応答時間
     host_expected_rtts.push(std::make_pair(expected_rtt, host_index));
   }
-  for (u_int32_t i = 1; i < host_cs_.size(); i++) {
-    ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::updateWeights(): Setting weight {} for host {}", host_weights_[i], hosts[i]->address()->asString());
+  for (u_int32_t i = 1; i < host_specs_.size(); i++) {
+    ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::updateWeights(): Setting weight {} for host {}", host_specs_[i].weight, hosts[i]->address()->asString());
   }
 }
 
@@ -125,6 +124,11 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
       hosts.push_back(host_ptr);
     }
   }
+  if (hosts.size() != host_specs_.size()) {
+    ENVOY_LOG(warn, "tetraloba: LeastResponseTimeLoadBalancer::hostWeight(): clear and resize host_specs_ (" + std::to_string(host_specs_.size()) + ") to hosts.size() (" + std::to_string(hosts.size())+ ").");
+    host_specs_.clear();
+    host_specs_.resize(hosts.size());
+  }
   for (const auto& host : hosts) {
     if (host->stats().current_time_.value() == 0) {
       return 1; // まだ1つもリクエストを処理し終えていない(=平均応答時間が分からない)hostが有るので、全てのhostのweightは1(=ラウンドロビン)
@@ -137,11 +141,11 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
   bool recalc_weight_required = false;
   u_int64_t lambda_sum = 0;
   for (const auto& host : hosts) {
-    u_int64_t lambda = host_lambdas_[i]; // 到着率
-    u_int64_t rtt = host_rtts_[i]; // 平均応答時間
-    u_int64_t c_ssthresh = host_c_ssthresh_[i]; // cのスロースタート閾値
-    u_int32_t c = host_cs_[i]; // 窓口数
-    u_int64_t mu = host_mus_[i]; // サービス率
+    u_int64_t lambda = host_specs_[i].lambda; // 到着率
+    u_int64_t rtt = host_specs_[i].rtt; // 平均応答時間
+    u_int64_t c_ssthresh = host_specs_[i].c_ssthresh; // cのスロースタート閾値
+    u_int32_t c = host_specs_[i].c; // 窓口数
+    u_int64_t mu = host_specs_[i].mu; // サービス率
     // current_time_がmax_current_time - time_slice_size以前のものはcurrent_*から計算して、以降のものはprevious_*から計算する。
     if (host->stats().current_time_.value() <= max_current_time - timeslice_range) {
       lambda = host->stats().current_rq_total_.value();
@@ -155,18 +159,18 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
     }
     lambda_sum += lambda;
     // 平均応答時間が変化していればcとμを再計算。
-    if (rtt != host_rtts_[i]) {
+    if (rtt != host_specs_[i].rtt) {
       double rho = static_cast<double>(lambda) / calculatePredictedMu(c, lambda, rtt);
       c_ssthresh = calculateCSsthresh(c_ssthresh, rho, target_rho);
       c = calculatePredictedC(c, rho, target_rho, c_ssthresh);
       mu = calculatePredictedMu(c, lambda, rtt);
-      host_rtts_[i] = rtt;
+      host_specs_[i].rtt = rtt;
     }
     // cかμが変化していれば重みを再計算 (updateWeights())
-    if (c != host_cs_[i] || mu != host_mus_[i]) {
+    if (c != host_specs_[i].c || mu != host_specs_[i].mu) {
       recalc_weight_required = true;
-      host_cs_[i] = c;
-      host_mus_[i] = mu;
+      host_specs_[i].c = c;
+      host_specs_[i].mu = mu;
     }
 
     if (host->address()->asString() == target_host.address()->asString()) {
@@ -181,11 +185,11 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
   // if (!noHostsAreInSlowStart()) {
   //   return applySlowStartFactor(host_weight, host);
   // }
-  if (host_weights_.size() != hosts.size() || hosts.size() <= target_host_index) {
+  if (host_specs_.size() != hosts.size() || hosts.size() <= target_host_index) {
     ENVOY_LOG(error, "tetraloba: LeastResponseTimeLoadBalancer::hostWeight(): target host index " + std::to_string(target_host_index) + " not found!");
   }
-  ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::hostWeight(): host_weight: " + std::to_string(host_weights_[target_host_index]));
-  return host_weights_[target_host_index];
+  ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::hostWeight(): host_weight of " + target_host->address()->asString() + ": " + std::to_string(host_specs_[target_host_index].weight));
+  return host_specs_[target_host_index].weight;
 }
 
 // Since shouldCreateEdf() forces the use of EDF,
