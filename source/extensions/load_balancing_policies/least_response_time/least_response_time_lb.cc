@@ -41,7 +41,7 @@ double LeastResponseTimeLoadBalancer::calculateAveRtt(double lambda, double mu, 
   return aveRTT;
 }
 u_int64_t LeastResponseTimeLoadBalancer::calculatePredictedMu(u_int32_t c, double lambda, double average_rtt) {
-  auto func = [](u_int32_t c, double mu, double lambda, double average_rtt) {return calculateAveRtt(c, mu, lambda) - average_rtt;};
+  auto func = [](u_int32_t c, double mu, double lambda, double average_rtt) {return calculateAveRtt(lambda, mu, c) - average_rtt;};
   /* func(mu) = 0 となる mu を二分探索 */
   double mu_left = lambda + 1.0 / average_rtt;
   double mu_right = lambda + c / average_rtt;
@@ -159,7 +159,7 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
       double rho = static_cast<double>(lambda) / calculatePredictedMu(c, lambda, rtt);
       c_ssthresh = calculateCSsthresh(c_ssthresh, rho, target_rho);
       c = calculatePredictedC(c, rho, target_rho, c_ssthresh);
-      mu = calculatePredictedMu(lambda, rtt, c);
+      mu = calculatePredictedMu(c, lambda, rtt);
       host_rtts_[i] = rtt;
     }
     // cかμが変化していれば重みを再計算 (updateWeights())
@@ -182,9 +182,8 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
   //   return applySlowStartFactor(host_weight, host);
   // }
   if (host_weights_.size() != hosts.size() || hosts.size() <= target_host_index) {
-    ENVOY_LOG(error, "tetraloba: LeastResponseTimeLoadBalancer::hostWeight(): target host not found!");
+    ENVOY_LOG(error, "tetraloba: LeastResponseTimeLoadBalancer::hostWeight(): target host index " + std::to_string(target_host_index) + " not found!");
   }
-
   ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::hostWeight(): host_weight: " + std::to_string(host_weights_[target_host_index]));
   return host_weights_[target_host_index];
 }
