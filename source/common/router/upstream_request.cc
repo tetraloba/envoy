@@ -194,7 +194,7 @@ void UpstreamRequest::cleanUp() {
       upstream_host_->stats().previous_rq_duration_total_.set(upstream_host_->stats().current_rq_duration_total_.value());
       upstream_host_->stats().current_rq_total_.reset();
       upstream_host_->stats().current_rq_duration_total_.reset();
-      upstream_host_->stats().timeslice_start_nano_.add(elapsed_time_nano);
+      upstream_host_->stats().timeslice_start_nano_.add(elapsed_time_nano.count());
       ENVOY_LOG(debug, "tetraloba: UpstreamRequest::cleanUp(): timeslice_start_nano_ changed to {}", upstream_host_->stats().timeslice_start_nano_.value());
     }
     upstream_host_->stats().current_rq_total_.inc();
