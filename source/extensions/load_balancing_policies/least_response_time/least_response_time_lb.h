@@ -17,19 +17,8 @@ struct LBHostSpec {
 /**
  * Weighted Least Response Time load balancer.
  *
- * In a normal setup when all hosts have the same weight it randomly picks up N healthy hosts
- * (where N is specified in the LB configuration) and compares number of active requests. Technique
- * is based on http://www.eecs.harvard.edu/~michaelm/postscripts/mythesis.pdf and is known as P2C
- * (power of two choices).
- *
- * When hosts have different weights, an RR EDF schedule is used. Host weight is scaled
- * by the number of active requests at pick/insert time. Thus, hosts will never fully drain as
- * they would in normal P2C, though they will get picked less and less often. In the future, we
- * can consider two alternate algorithms:
- * 1) Expand out all hosts by weight (using more memory) and do standard P2C.
- * 2) Use a weighted Maglev table, and perform P2C on two random hosts selected from the table.
- *    The benefit of the Maglev table is at the expense of resolution, memory usage is capped.
- *    Additionally, the Maglev table can be shared amongst all threads.
+ * An RR EDF schedule is used. Host weight is scaled by the predicted response time. Predicted
+ * response time is calculated based on past response times and the M/M/c model.
  */
 class LeastResponseTimeLoadBalancer : public EdfLoadBalancerBase {
 public:
@@ -112,10 +101,17 @@ private:
                                         const HostsSource& source) override;
 
   const uint32_t choice_count_;
+  /** 
+  * @brief 待ち行列理論 M/M/cモデルに基づいて応答時間を算出
+  * @param (lambda) リクエスト到着率[requests / timeslice]
+  * @param (mu) サービス率[requests / timeslice]
+  * @param (c) 窓口数
+  * @return 応答時間[timeslice]
+  */
   static double calculateAveRtt(double lambda, double mu, u_int32_t c);
-  static u_int64_t calculateCSsthresh(u_int64_t previous_c_ssthresh, double rho, double target_rho);
-  static u_int32_t calculatePredictedC(u_int32_t previous_c, double rho, double target_rho, u_int64_t c_ssthresh);
-  static u_int64_t calculatePredictedMu(u_int32_t c, double lambda, double average_rtt);
+  static u_int32_t calculateCSsthresh(u_int32_t previous_c_ssthresh, double rho, double target_rho);
+  static u_int32_t calculatePredictedC(u_int32_t previous_c, double rho, double target_rho, u_int32_t c_ssthresh);
+  static double calculatePredictedMu(u_int32_t c, double lambda, double average_rtt);
   void updateWeights(const u_int64_t lambda_sum, const std::vector<HostSharedPtr>& hosts) const;
 
   mutable std::vector<LBHostSpec> host_specs_;

@@ -39,7 +39,7 @@ using MetadataConstSharedPtr = std::shared_ptr<const envoy::config::core::v3::Me
   COUNTER(rq_success)                                                                              \
   COUNTER(rq_timeout)                                                                              \
   COUNTER(rq_total)                                                                                \
-  COUNTER(current_time)                                                                            \
+  COUNTER(timeslice_start_nano)                                                                    \
   COUNTER(current_rq_total)                                                                        \
   COUNTER(current_rq_duration_total)                                                               \
   GAUGE(cx_active)                                                                                 \

@@ -178,25 +178,24 @@ void UpstreamRequest::cleanUp() {
                                                      tracing_config.value().get());
   }
 
-  const u_int64_t timeslice_range = 1000000000; // 1 second in nanoseconds // hard coding #todo
+  using Nanoseconds = Envoy::Event::TimeSystem::Nanoseconds;
+  const Nanoseconds timeslice_range_nano(1'000'000'000); // 1 second in nanoseconds // hard coding #todo
 
   Event::Dispatcher& dispatcher = parent_.callbacks()->dispatcher();
-  const std::chrono::nanoseconds start_time_nano =
-      std::chrono::duration_cast<std::chrono::nanoseconds>(start_time_.time_since_epoch());
+  const Nanoseconds start_time_nano = std::chrono::duration_cast<Nanoseconds>(start_time_.time_since_epoch());
   const MonotonicTime end_time = dispatcher.timeSource().monotonicTime();
-  const std::chrono::nanoseconds end_time_nano =
-      std::chrono::duration_cast<std::chrono::nanoseconds>(end_time.time_since_epoch());
-  const std::chrono::nanoseconds response_time_nano = end_time_nano - start_time_nano;
+  const Nanoseconds end_time_nano = std::chrono::duration_cast<Nanoseconds>(end_time.time_since_epoch());
+  const Nanoseconds response_time_nano = end_time_nano - start_time_nano;
   ENVOY_LOG(debug, "tetraloba: UpstreamRequest::cleanUp(): response_time_nano is {}", response_time_nano.count());
   if (upstream_host_ != nullptr) {
-    const u_int64_t elapsed_time = end_time_nano.count() - upstream_host_->stats().current_time_.value();
-    if (timeslice_range < elapsed_time) { // timeslice updated // これstart_time_nanoの方で評価すべきかなあ #todo
+    const Nanoseconds elapsed_time_nano = end_time_nano - Nanoseconds(upstream_host_->stats().timeslice_start_nano_.value());
+    if (timeslice_range_nano < elapsed_time_nano) { // timeslice updated // これstart_time_nanoの方で評価すべきかなあ #todo
       upstream_host_->stats().previous_rq_total_.set(upstream_host_->stats().current_rq_total_.value());
       upstream_host_->stats().previous_rq_duration_total_.set(upstream_host_->stats().current_rq_duration_total_.value());
       upstream_host_->stats().current_rq_total_.reset();
       upstream_host_->stats().current_rq_duration_total_.reset();
-      upstream_host_->stats().current_time_.add(elapsed_time);
-      ENVOY_LOG(debug, "tetraloba: UpstreamRequest::cleanUp(): current_time changed to {}", upstream_host_->stats().current_time_.value());
+      upstream_host_->stats().timeslice_start_nano_.add(elapsed_time_nano);
+      ENVOY_LOG(debug, "tetraloba: UpstreamRequest::cleanUp(): timeslice_start_nano_ changed to {}", upstream_host_->stats().timeslice_start_nano_.value());
     }
     upstream_host_->stats().current_rq_total_.inc();
     upstream_host_->stats().current_rq_duration_total_.add(response_time_nano.count());
