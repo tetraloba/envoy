@@ -118,13 +118,13 @@ void LeastResponseTimeLoadBalancer::updateWeights(const u_int64_t lambda, const 
                                    static_cast<u_int64_t>(expected_rtt_d);
     host_expected_rtts.push(std::make_pair(expected_rtt, host_index));
   }
-  for (u_int32_t i = 1; i < host_specs_.size(); i++) {
+  for (u_int32_t i = 0; i < host_specs_.size(); i++) {
     ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::updateWeights(): Setting weight {} for host {}", host_specs_[i].weight, hosts[i]->address()->asString());
   }
 }
 
 double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const {
-  ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::hostWeight() called!");
+  ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::hostWeight() (for {}) called!", target_host.address()->asString());
   // TODO:tetraloba
   // EdfLoadBalancerはhost毎にhostWeight()を呼び出すので、hostWeight()内で全hostを探索するとhost数をnとしてO(n^2)になってしまう。
   // TODO:tetraloba
