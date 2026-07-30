@@ -203,6 +203,7 @@ void UpstreamRequest::cleanUp() {
               upstream_host_->stats().current_rq_total_.value(),
               upstream_host_->stats().current_rq_duration_total_.value()
     );
+    ENVOY_LOG(debug, "tetraloba: UpstreamRequest::cleanUp(): rq_active is {}.", upstream_host_->stats().rq_active_.value());
   }
 
   if (per_try_timeout_ != nullptr) {
@@ -253,8 +254,6 @@ void UpstreamRequest::cleanUp() {
 
   stream_info_.onRequestComplete();
   upstreamLog(AccessLog::AccessLogType::UpstreamEnd);
-
-  ENVOY_LOG(debug, "tetraloba: UpstreamRequest::cleanUp(): rq_active is {}.", upstream_host_->stats().rq_active_.value());
 
   while (downstream_data_disabled_ != 0) {
     parent_.callbacks()->onDecoderFilterBelowWriteBufferLowWatermark();
