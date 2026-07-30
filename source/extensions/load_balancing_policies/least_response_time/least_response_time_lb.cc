@@ -119,7 +119,7 @@ void LeastResponseTimeLoadBalancer::updateWeights(const u_int64_t lambda, const 
     host_expected_rtts.push(std::make_pair(expected_rtt, host_index));
   }
   for (u_int32_t i = 0; i < host_specs_.size(); i++) {
-    ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::updateWeights(): Setting weight {} for host {}", host_specs_[i].weight, hosts[i]->address()->asString());
+    ENVOY_LOG(info, "tetraloba: LeastResponseTimeLoadBalancer::updateWeights(): Setting weight {} for host {}", host_specs_[i].weight, hosts[i]->address()->asString());
   }
 }
 
