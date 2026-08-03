@@ -83,6 +83,7 @@ u_int32_t LeastResponseTimeLoadBalancer::calculateCSsthresh(u_int32_t previous_c
 }
 u_int32_t LeastResponseTimeLoadBalancer::calculatePredictedC(u_int32_t previous_c, double rtt, double predicted_rtt, u_int32_t c_ssthresh) {
   ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculatePredictedC(): previous_c={}, rtt={}, predicted_rtt={}, c_ssthresh={}", previous_c, rtt, predicted_rtt, c_ssthresh);
+  return 1; // TODO:tetraloba
   if (previous_c == 0) {
     return 1;
   }
