@@ -24,9 +24,11 @@ double factorial(u_int32_t n) {
 double LeastResponseTimeLoadBalancer::calculateAveRtt(double lambda, double mu, u_int32_t c) {
   ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculateAveRtt(): lambda={}, mu={}, c={}", lambda, mu, c);
   if (c <= 0) {
+    ENVOY_LOG(error, "tetraloba: LeastResponseTimeLoadBalancer::calculateAveRtt(): `c` ({}) must be greater than 0.", c);
     throw std::invalid_argument("Number of cores (c) must be greater than 0.");
   }
   if (mu <= lambda) {
+    ENVOY_LOG(warn, "tetraloba: LeastResponseTimeLoadBalancer::calculateAveRtt(): `mu` ({}) should be greater than `lambda` ({}). Returning infinity.", mu, lambda);
     return std::numeric_limits<double>::infinity();
   }
 
@@ -41,6 +43,14 @@ double LeastResponseTimeLoadBalancer::calculateAveRtt(double lambda, double mu, 
 }
 double LeastResponseTimeLoadBalancer::calculatePredictedMu(u_int32_t c, double lambda, double average_rtt) {
   ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculatePredictedMu(): c={}, lambda={}, average_rtt={}", c, lambda, average_rtt);
+  if (c <= 0) {
+    ENVOY_LOG(error, "tetraloba: LeastResponseTimeLoadBalancer::calculatePredictedMu(): `c` ({}) must be greater than 0.", c);
+    throw std::invalid_argument("Number of cores (c) must be greater than 0.");
+  }
+  if (average_rtt <= 0) {
+    ENVOY_LOG(error, "tetraloba: LeastResponseTimeLoadBalancer::calculatePredictedMu(): `average_rtt` ({}) must be positive.", average_rtt);
+    throw std::invalid_argument("Average RTT must be positive.");
+  }
   auto func = [](u_int32_t c, double mu, double lambda, double average_rtt) {return calculateAveRtt(lambda, mu, c) - average_rtt;};
   /* func(mu) = 0 となる mu を二分探索 */
   double mu_left = lambda + 1 / average_rtt;
@@ -176,11 +186,14 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
     lambda_sum += lambda;
     // 平均応答時間が変化していればcとμを再計算。
     if (rtt != host_specs_[i].rtt) {
-      double predicted_rtt = calculateAveRtt(lambda, mu, c);
-      // double rho = static_cast<double>(lambda) / calculatePredictedMu(c, lambda, static_cast<double>(rtt) / timeslice_range_nano);
-      c_ssthresh = calculateCSsthresh(c_ssthresh, rtt, predicted_rtt);
-      c = calculatePredictedC(c, rtt, predicted_rtt, c_ssthresh);
-      mu = calculatePredictedMu(c, lambda, static_cast<double>(rtt) / timeslice_range_nano);
+      double timeslice_rtt = static_cast<double>(rtt) / timeslice_range_nano;
+      double predicted_rtt = timeslice_rtt;
+      if (0 < c && 0 < mu) {
+        predicted_rtt = calculateAveRtt(lambda, mu, c);
+      }
+      c_ssthresh = calculateCSsthresh(c_ssthresh, timeslice_rtt, predicted_rtt);
+      c = calculatePredictedC(c, timeslice_rtt, predicted_rtt, c_ssthresh);
+      mu = calculatePredictedMu(c, lambda, timeslice_rtt);
       host_specs_[i].rtt = rtt;
     }
     // cかμが変化していれば重みを再計算 (updateWeights())
