@@ -60,26 +60,26 @@ double LeastResponseTimeLoadBalancer::calculatePredictedMu(u_int32_t c, double l
     }
   }
 }
-u_int32_t LeastResponseTimeLoadBalancer::calculateCSsthresh(u_int32_t previous_c_ssthresh, double rho, double target_rho) {
-  ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculateCSsthresh(): previous_c_ssthresh={}, rho={}, target_rho={}", previous_c_ssthresh, rho, target_rho);
+u_int32_t LeastResponseTimeLoadBalancer::calculateCSsthresh(u_int32_t previous_c_ssthresh, double rtt, double predicted_rtt) {
+  ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculateCSsthresh(): previous_c_ssthresh={}, rtt={}, predicted_rtt={}", previous_c_ssthresh, rtt, predicted_rtt);
   if (previous_c_ssthresh == 0) {
     return std::numeric_limits<u_int32_t>::max();
   }
-  if (rho > target_rho) {
+  if (rtt > predicted_rtt) {
     return previous_c_ssthresh > 2 ? previous_c_ssthresh / 2 : 1;
   } else {
     return previous_c_ssthresh;
   }
 }
-u_int32_t LeastResponseTimeLoadBalancer::calculatePredictedC(u_int32_t previous_c, double rho, double target_rho, u_int32_t c_ssthresh) {
-  ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculatePredictedC(): previous_c={}, rho={}, target_rho={}, c_ssthresh={}", previous_c, rho, target_rho, c_ssthresh);
+u_int32_t LeastResponseTimeLoadBalancer::calculatePredictedC(u_int32_t previous_c, double rtt, double predicted_rtt, u_int32_t c_ssthresh) {
+  ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculatePredictedC(): previous_c={}, rtt={}, predicted_rtt={}, c_ssthresh={}", previous_c, rtt, predicted_rtt, c_ssthresh);
   if (previous_c == 0) {
     return 1;
   }
   if (previous_c < c_ssthresh) {
     return previous_c == 0 ? 1 : 2 * previous_c;
   } else {
-    return rho > target_rho ? (previous_c > 2 ? previous_c / 2 : 1) : previous_c + 1;
+    return rtt > predicted_rtt ? (previous_c > 2 ? previous_c / 2 : 1) : previous_c + 1;
   }
 }
 
@@ -130,7 +130,6 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
   // TODO:tetraloba
   // hard codingの解消(config)
   const u_int64_t timeslice_range_nano = 1'000'000'000; // 1 second in nanoseconds // hard coding
-  const double target_rho = 0.8; // hard coding
 
   std::vector<HostSharedPtr> hosts; // hostの一次元配列(shared_pointer)
   for (const auto& host_set : priority_set_.hostSetsPerPriority()) {
@@ -177,9 +176,10 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
     lambda_sum += lambda;
     // 平均応答時間が変化していればcとμを再計算。
     if (rtt != host_specs_[i].rtt) {
-      double rho = static_cast<double>(lambda) / calculatePredictedMu(c, lambda, static_cast<double>(rtt) / timeslice_range_nano);
-      c_ssthresh = calculateCSsthresh(c_ssthresh, rho, target_rho);
-      c = calculatePredictedC(c, rho, target_rho, c_ssthresh);
+      double predicted_rtt = calculateAveRtt(lambda, mu, c);
+      // double rho = static_cast<double>(lambda) / calculatePredictedMu(c, lambda, static_cast<double>(rtt) / timeslice_range_nano);
+      c_ssthresh = calculateCSsthresh(c_ssthresh, rtt, predicted_rtt);
+      c = calculatePredictedC(c, rtt, predicted_rtt, c_ssthresh);
       mu = calculatePredictedMu(c, lambda, static_cast<double>(rtt) / timeslice_range_nano);
       host_specs_[i].rtt = rtt;
     }
