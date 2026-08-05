@@ -59,7 +59,7 @@ double LeastResponseTimeLoadBalancer::calculatePredictedMu(u_int32_t c, double l
     double mu_mid = (mu_left + mu_right) / 2;
     if (mu_right - mu_left < 1) { // 探索範囲が十分に狭まった
       ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculatePredictedMu(): (c={}, lambda={}, average_rtt={}) -> mu={}", c, lambda, average_rtt, mu_mid);
-      return static_cast<u_int64_t>(mu_mid);
+      return mu_mid;
     }
     double res = func(c, mu_mid, lambda, average_rtt);
     if (res < 0) { // mu_mid(予測mu)が過大
@@ -68,7 +68,7 @@ double LeastResponseTimeLoadBalancer::calculatePredictedMu(u_int32_t c, double l
       mu_left = mu_mid;
     } else {
       ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculatePredictedMu(): (c={}, lambda={}, average_rtt={}) -> mu={}", c, lambda, average_rtt, mu_mid);
-      return static_cast<u_int64_t>(mu_mid);
+      return mu_mid;
     }
   }
 }
