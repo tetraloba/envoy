@@ -238,9 +238,9 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
       rtt = host->stats().previous_rq_duration_total_.value() / lambda;
     }
     lambda_sum += lambda;
-    // 平均応答時間が変化していればcとμを再計算。
+    // 到着率か平均応答時間が変化していればcとμを再計算。
     ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::hostWeight(): host:{}, lambda:{}, rtt:{}", host->address()->asString(), lambda, rtt);
-    if (rtt != host_specs_[i].rtt) {
+    if (lambda != host_specs_[i].lambda || rtt != host_specs_[i].rtt) {
       double timeslice_rtt = static_cast<double>(rtt) / timeslice_range_nano;
       double predicted_rtt = timeslice_rtt;
       if (0 < c && 0 < mu) {
