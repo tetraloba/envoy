@@ -23,7 +23,6 @@ double factorial(u_int32_t n) {
   return result;
 }
 double LeastResponseTimeLoadBalancer::calculateAveRtt(double lambda, double mu, u_int32_t c) {
-  ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculateAveRtt(): lambda={}, mu={}, c={}", lambda, mu, c);
   if (c <= 0) {
     ENVOY_LOG(error, "tetraloba: LeastResponseTimeLoadBalancer::calculateAveRtt(): `c` ({}) must be greater than 0.", c);
     throw std::invalid_argument("Number of cores (c) must be greater than 0.");
@@ -40,10 +39,10 @@ double LeastResponseTimeLoadBalancer::calculateAveRtt(double lambda, double mu, 
   }
   double p0 = 1.0 / (sum + (1.0 / factorial(c)) * std::pow(lambda / mu_per_core, c) * (c * mu_per_core / (c * mu_per_core - lambda)));
   double aveRTT = std::pow(lambda / mu_per_core, c) * mu_per_core / (factorial(c - 1) * std::pow(c * mu_per_core - lambda, 2)) * p0 + (1.0 / mu_per_core);
+  ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculateAveRtt(): (lambda={}, mu={}, c={}) -> aveRTT={}", lambda, mu, c, aveRTT);
   return aveRTT;
 }
 double LeastResponseTimeLoadBalancer::calculatePredictedMu(u_int32_t c, double lambda, double average_rtt) {
-  ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculatePredictedMu(): c={}, lambda={}, average_rtt={}", c, lambda, average_rtt);
   if (c <= 0) {
     ENVOY_LOG(error, "tetraloba: LeastResponseTimeLoadBalancer::calculatePredictedMu(): `c` ({}) must be greater than 0.", c);
     throw std::invalid_argument("Number of cores (c) must be greater than 0.");
@@ -59,6 +58,7 @@ double LeastResponseTimeLoadBalancer::calculatePredictedMu(u_int32_t c, double l
   while (true) {
     double mu_mid = (mu_left + mu_right) / 2;
     if (mu_right - mu_left < 1) { // 探索範囲が十分に狭まった
+      ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculatePredictedMu(): (c={}, lambda={}, average_rtt={}) -> mu={}", c, lambda, average_rtt, mu_mid);
       return static_cast<u_int64_t>(mu_mid);
     }
     double res = func(c, mu_mid, lambda, average_rtt);
@@ -67,30 +67,75 @@ double LeastResponseTimeLoadBalancer::calculatePredictedMu(u_int32_t c, double l
     } else if (res > 0) { // mu_mid(予測mu)が過小
       mu_left = mu_mid;
     } else {
+      ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculatePredictedMu(): (c={}, lambda={}, average_rtt={}) -> mu={}", c, lambda, average_rtt, mu_mid);
       return static_cast<u_int64_t>(mu_mid);
     }
   }
 }
 u_int32_t LeastResponseTimeLoadBalancer::calculateCSsthresh(u_int32_t previous_c_ssthresh, double rtt, double predicted_rtt) {
-  ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculateCSsthresh(): previous_c_ssthresh={}, rtt={}, predicted_rtt={}", previous_c_ssthresh, rtt, predicted_rtt);
   if (previous_c_ssthresh == 0) {
+    ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculateCSsthresh(): (previous_c_ssthresh={}, rtt={}, predicted_rtt={}) -> CSsthresh={}",
+      previous_c_ssthresh,
+      rtt,
+      predicted_rtt,
+      std::numeric_limits<u_int32_t>::max()
+    );
     return std::numeric_limits<u_int32_t>::max();
   }
   if (rtt > predicted_rtt) {
+    ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculateCSsthresh(): (previous_c_ssthresh={}, rtt={}, predicted_rtt={}) -> CSsthresh={}",
+      previous_c_ssthresh,
+      rtt,
+      predicted_rtt,
+      (previous_c_ssthresh > 2 ? previous_c_ssthresh / 2 : 1)
+    );
     return previous_c_ssthresh > 2 ? previous_c_ssthresh / 2 : 1;
   } else {
+    ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculateCSsthresh(): (previous_c_ssthresh={}, rtt={}, predicted_rtt={}) -> CSsthresh={}",
+      previous_c_ssthresh,
+      rtt,
+      predicted_rtt,
+      previous_c_ssthresh
+    );
     return previous_c_ssthresh;
   }
 }
 u_int32_t LeastResponseTimeLoadBalancer::calculatePredictedC(u_int32_t previous_c, double rtt, double predicted_rtt, u_int32_t c_ssthresh) {
-  ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculatePredictedC(): previous_c={}, rtt={}, predicted_rtt={}, c_ssthresh={}", previous_c, rtt, predicted_rtt, c_ssthresh);
+  ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculatePredictedC(): (previous_c={}, rtt={}, predicted_rtt={}, c_ssthresh={}) -> c={}",
+    previous_c,
+    rtt,
+    predicted_rtt,
+    c_ssthresh,
+    1
+  );
   return 1; // TODO:tetraloba
   if (previous_c == 0) {
+    ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculatePredictedC(): (previous_c={}, rtt={}, predicted_rtt={}, c_ssthresh={}) -> c={}",
+      previous_c,
+      rtt,
+      predicted_rtt,
+      c_ssthresh,
+      1
+    );
     return 1;
   }
   if (previous_c < c_ssthresh) {
+    ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculatePredictedC(): (previous_c={}, rtt={}, predicted_rtt={}, c_ssthresh={}) -> c={}",
+      previous_c,
+      rtt,
+      predicted_rtt,
+      c_ssthresh,
+      (previous_c == 0 ? 1 : 2 * previous_c)
+    );
     return previous_c == 0 ? 1 : 2 * previous_c;
   } else {
+    ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculatePredictedC(): (previous_c={}, rtt={}, predicted_rtt={}, c_ssthresh={}) -> c={}",
+      previous_c,
+      rtt,
+      predicted_rtt,
+      c_ssthresh,
+      (rtt > predicted_rtt ? (previous_c > 2 ? previous_c / 2 : 1) : previous_c + 1)
+    );
     return rtt > predicted_rtt ? (previous_c > 2 ? previous_c / 2 : 1) : previous_c + 1;
   }
 }
@@ -173,9 +218,19 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
     u_int64_t mu         = host_specs_[i].mu;         // サービス率[requests / timeslice]
     // timeslice_start_nano_がlatest_timeslice_start_nano - time_slice_size以前のものはcurrent_*から計算して、以降のものはprevious_*から計算する。
     if (host->stats().timeslice_start_nano_.value() <= latest_timeslice_start_nano - timeslice_range_nano) {
+      ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::hostWeight(): host:{}, current_rq_total_:{}, current_rq_duration_total_:{}",
+        host->address()->asString(),
+        host->stats().current_rq_total_.value(),
+        host->stats().current_rq_duration_total_.value()
+      );
       lambda = host->stats().current_rq_total_.value();
       rtt = host->stats().current_rq_duration_total_.value() / lambda; // timeslice_start_nano_.value() != 0 => lambda > 0
     } else {
+      ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::hostWeight(): host:{}, previous_rq_total_:{}, previous_rq_duration_total_:{}",
+        host->address()->asString(),
+        host->stats().previous_rq_total_.value(),
+        host->stats().previous_rq_duration_total_.value()
+      );
       lambda = host->stats().previous_rq_total_.value();
       if (lambda == 0) {
         return 1; // まだtimeslice秒間分の応答時間が収集できていないhostが有るので、全てのhostのweightは1(=ラウンドロビン)
@@ -184,6 +239,7 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
     }
     lambda_sum += lambda;
     // 平均応答時間が変化していればcとμを再計算。
+    ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::hostWeight(): host:{}, lambda:{}, rtt:{}", host->address()->asString(), lambda, rtt);
     if (rtt != host_specs_[i].rtt) {
       double timeslice_rtt = static_cast<double>(rtt) / timeslice_range_nano;
       double predicted_rtt = timeslice_rtt;
