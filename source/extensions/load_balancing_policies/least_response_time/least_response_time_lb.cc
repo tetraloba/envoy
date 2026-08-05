@@ -2,6 +2,7 @@
 #include <limits>
 #include <queue>
 #include <stdexcept>
+#include <string>
 
 #include "source/extensions/load_balancing_policies/least_response_time/least_response_time_lb.h"
 
@@ -107,31 +108,28 @@ void LeastResponseTimeLoadBalancer::updateWeights(const u_int64_t lambda, const 
   const u_int32_t weight_sum = lambda > 128 ? 128 : lambda; // lambda / lambda_per_weight
   ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::updateWeights(): lambda_per_weight={}, weight_sum={}", lambda_per_weight, weight_sum);
   // greedy algorithm
-  std::priority_queue<std::pair<u_int64_t, u_int32_t>,
-                      std::vector<std::pair<u_int64_t, u_int32_t>>,
-                      std::greater<std::pair<u_int64_t, u_int32_t>>
-                     > host_expected_rtts; // (rtt, host_index)
+  using node = std::pair<double, u_int32_t>;
+  std::priority_queue<node, std::vector<node>, std::greater<node>> host_expected_rtts; // (rtt, host_index)
   for (u_int32_t i = 0; i < host_specs_.size(); i++) {
     host_specs_[i].weight = 0;
-    const double expected_rtt_d = calculateAveRtt(lambda_per_weight, host_specs_[i].mu, host_specs_[i].c); // weightが1の場合の平均応答時間
-    const u_int64_t expected_rtt = expected_rtt_d == std::numeric_limits<double>::infinity() ?
-                                   std::numeric_limits<u_int64_t>::max() :
-                                   static_cast<u_int64_t>(expected_rtt_d);
+    const double expected_rtt = calculateAveRtt(lambda_per_weight, host_specs_[i].mu, host_specs_[i].c); // weightが1の場合の平均応答時間
     host_expected_rtts.push(std::make_pair(expected_rtt, i));
   }
   for (u_int32_t w = 0; w < weight_sum; w++) {
     auto [rtt, host_index] = host_expected_rtts.top(); host_expected_rtts.pop();
     ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::updateWeights(): rtt={}, host_index={}", rtt, host_index);
     host_specs_[host_index].weight++;
-    const double expected_rtt_d = calculateAveRtt((host_specs_[host_index].weight + 1) * lambda_per_weight, host_specs_[host_index].mu, host_specs_[host_index].c); // weightを1増やした場合の応答時間
-    const u_int64_t expected_rtt = expected_rtt_d == std::numeric_limits<double>::infinity() ?
-                                   std::numeric_limits<u_int64_t>::max() :
-                                   static_cast<u_int64_t>(expected_rtt_d);
+    const double expected_rtt = calculateAveRtt((host_specs_[host_index].weight + 1) * lambda_per_weight, host_specs_[host_index].mu, host_specs_[host_index].c); // weightを1増やした場合の応答時間
     host_expected_rtts.push(std::make_pair(expected_rtt, host_index));
   }
+
+  using std::literals::string_literals::operator""s;
+  std::string weights_str = "["s;
   for (u_int32_t i = 0; i < host_specs_.size(); i++) {
-    ENVOY_LOG(info, "tetraloba: LeastResponseTimeLoadBalancer::updateWeights(): Setting weight {} for host {}", host_specs_[i].weight, hosts[i]->address()->asString());
+    weights_str += "{\""s + hosts[i]->address()->asString() + "\","s + std::to_string(host_specs_[i].weight) + "},"s;
   }
+  weights_str.back() = ']';
+  ENVOY_LOG(info, "tetraloba: LeastResponseTimeLoadBalancer::updateWeights(): weights: {} ", weights_str);
 }
 
 double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const {
