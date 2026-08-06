@@ -249,6 +249,7 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
       c_ssthresh = calculateCSsthresh(c_ssthresh, timeslice_rtt, predicted_rtt);
       c = calculatePredictedC(c, timeslice_rtt, predicted_rtt, c_ssthresh);
       mu = calculatePredictedMu(c, lambda, timeslice_rtt);
+      host_specs_[i].lambda = lambda;
       host_specs_[i].rtt = rtt;
     }
     // cかμが変化していれば重みを再計算 (updateWeights())
