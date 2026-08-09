@@ -188,8 +188,8 @@ void UpstreamRequest::cleanUp() {
   const Nanoseconds response_time_nano = end_time_nano - start_time_nano;
   ENVOY_LOG(debug, "tetraloba: UpstreamRequest::cleanUp(): response_time_nano is {}", response_time_nano.count());
   if (upstream_host_ != nullptr) {
-    absl::MutexLock lock(&upstream_host->stats().mutex_);
-    auto& stats = upstream_host_->stats(a);
+    absl::MutexLock lock(&upstream_host_->stats().mutex_);
+    auto& stats = upstream_host_->stats();
     const Nanoseconds elapsed_time_nano = end_time_nano - Nanoseconds(stats.timeslice_start_nano_.value());
     if (timeslice_range_nano < elapsed_time_nano) { // timeslice updated // これstart_time_nanoの方で評価すべきかなあ #todo
       stats.previous_rq_total_.set(stats.current_rq_total_.value());
