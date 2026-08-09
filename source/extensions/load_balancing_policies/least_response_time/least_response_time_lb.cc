@@ -222,7 +222,7 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
       ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::hostWeight(): host:{}, timeslice_start_nano_:{}, latest_timeslice_start_nano_:{}",
         host->address()->asString(),
         host->stats().timeslice_start_nano_.value(),
-        host->stats().latest_timeslice_start_nano.value()
+        latest_timeslice_start_nano
       );
       if (host->stats().timeslice_start_nano_.value() <= latest_timeslice_start_nano - timeslice_range_nano) {
         ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::hostWeight(): host:{}, current_rq_total_:{}, current_rq_duration_total_:{}",
