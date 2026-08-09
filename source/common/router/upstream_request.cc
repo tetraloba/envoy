@@ -188,22 +188,24 @@ void UpstreamRequest::cleanUp() {
   const Nanoseconds response_time_nano = end_time_nano - start_time_nano;
   ENVOY_LOG(debug, "tetraloba: UpstreamRequest::cleanUp(): response_time_nano is {}", response_time_nano.count());
   if (upstream_host_ != nullptr) {
-    const Nanoseconds elapsed_time_nano = end_time_nano - Nanoseconds(upstream_host_->stats().timeslice_start_nano_.value());
+    absl::MutexLock lock(&upstream_host->stats().mutex_);
+    auto& stats = upstream_host_->stats(a);
+    const Nanoseconds elapsed_time_nano = end_time_nano - Nanoseconds(stats.timeslice_start_nano_.value());
     if (timeslice_range_nano < elapsed_time_nano) { // timeslice updated // これstart_time_nanoの方で評価すべきかなあ #todo
-      upstream_host_->stats().previous_rq_total_.set(upstream_host_->stats().current_rq_total_.value());
-      upstream_host_->stats().previous_rq_duration_total_.set(upstream_host_->stats().current_rq_duration_total_.value());
-      upstream_host_->stats().current_rq_total_.reset();
-      upstream_host_->stats().current_rq_duration_total_.reset();
-      upstream_host_->stats().timeslice_start_nano_.add(elapsed_time_nano.count());
-      ENVOY_LOG(debug, "tetraloba: UpstreamRequest::cleanUp(): timeslice_start_nano_ changed to {}", upstream_host_->stats().timeslice_start_nano_.value());
+      stats.previous_rq_total_.set(stats.current_rq_total_.value());
+      stats.previous_rq_duration_total_.set(stats.current_rq_duration_total_.value());
+      stats.current_rq_total_.reset();
+      stats.current_rq_duration_total_.reset();
+      stats.timeslice_start_nano_.add(elapsed_time_nano.count());
+      ENVOY_LOG(debug, "tetraloba: UpstreamRequest::cleanUp(): timeslice_start_nano_ changed to {}", stats.timeslice_start_nano_.value());
     }
-    upstream_host_->stats().current_rq_total_.inc();
-    upstream_host_->stats().current_rq_duration_total_.add(response_time_nano.count());
+    stats.current_rq_total_.inc();
+    stats.current_rq_duration_total_.add(response_time_nano.count());
     ENVOY_LOG(debug, "tetraloba: UpstreamRequest::cleanUp(): current_rq_total is ({}, {})",
-              upstream_host_->stats().current_rq_total_.value(),
-              upstream_host_->stats().current_rq_duration_total_.value()
+              stats.current_rq_total_.value(),
+              stats.current_rq_duration_total_.value()
     );
-    ENVOY_LOG(debug, "tetraloba: UpstreamRequest::cleanUp(): rq_active is {}.", upstream_host_->stats().rq_active_.value());
+    ENVOY_LOG(debug, "tetraloba: UpstreamRequest::cleanUp(): rq_active is {}.", stats.rq_active_.value());
   }
 
   if (per_try_timeout_ != nullptr) {

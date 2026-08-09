@@ -16,6 +16,7 @@
 #include "envoy/upstream/resource_manager.h"
 
 #include "absl/strings/string_view.h"
+#include "absl/synchronization/mutex.h"
 #include "xds/data/orca/v3/orca_load_report.pb.h"
 
 namespace Envoy {
@@ -55,6 +56,8 @@ using MetadataConstSharedPtr = std::shared_ptr<const envoy::config::core::v3::Me
  */
 struct HostStats {
   ALL_HOST_STATS(GENERATE_PRIMITIVE_COUNTER_STRUCT, GENERATE_PRIMITIVE_GAUGE_STRUCT);
+
+  absl::Mutex mutex_;
 
   // Provide access to name,counter pairs.
   std::vector<std::pair<absl::string_view, Stats::PrimitiveCounterReference>> counters() {

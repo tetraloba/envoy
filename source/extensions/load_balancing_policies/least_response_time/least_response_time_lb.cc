@@ -216,26 +216,29 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
     u_int32_t c_ssthresh = host_specs_[i].c_ssthresh; // cのスロースタート閾値
     u_int32_t c          = host_specs_[i].c;          // 窓口数
     u_int64_t mu         = host_specs_[i].mu;         // サービス率[requests / timeslice]
-    // timeslice_start_nano_がlatest_timeslice_start_nano - time_slice_size以前のものはcurrent_*から計算して、以降のものはprevious_*から計算する。
-    if (host->stats().timeslice_start_nano_.value() <= latest_timeslice_start_nano - timeslice_range_nano) {
-      ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::hostWeight(): host:{}, current_rq_total_:{}, current_rq_duration_total_:{}",
-        host->address()->asString(),
-        host->stats().current_rq_total_.value(),
-        host->stats().current_rq_duration_total_.value()
-      );
-      lambda = host->stats().current_rq_total_.value();
-      rtt = host->stats().current_rq_duration_total_.value() / lambda; // timeslice_start_nano_.value() != 0 => lambda > 0
-    } else {
-      ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::hostWeight(): host:{}, previous_rq_total_:{}, previous_rq_duration_total_:{}",
-        host->address()->asString(),
-        host->stats().previous_rq_total_.value(),
-        host->stats().previous_rq_duration_total_.value()
-      );
-      lambda = host->stats().previous_rq_total_.value();
-      if (lambda == 0) {
-        return 1; // まだtimeslice秒間分の応答時間が収集できていないhostが有るので、全てのhostのweightは1(=ラウンドロビン)
+    {
+      absl::MutexLock lock(&host->stats().mutex_);
+      // timeslice_start_nano_がlatest_timeslice_start_nano - time_slice_size以前のものはcurrent_*から計算して、以降のものはprevious_*から計算する。
+      if (host->stats().timeslice_start_nano_.value() <= latest_timeslice_start_nano - timeslice_range_nano) {
+        ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::hostWeight(): host:{}, current_rq_total_:{}, current_rq_duration_total_:{}",
+          host->address()->asString(),
+          host->stats().current_rq_total_.value(),
+          host->stats().current_rq_duration_total_.value()
+        );
+        lambda = host->stats().current_rq_total_.value();
+        rtt = host->stats().current_rq_duration_total_.value() / lambda; // timeslice_start_nano_.value() != 0 => lambda > 0
+      } else {
+        ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::hostWeight(): host:{}, previous_rq_total_:{}, previous_rq_duration_total_:{}",
+          host->address()->asString(),
+          host->stats().previous_rq_total_.value(),
+          host->stats().previous_rq_duration_total_.value()
+        );
+        lambda = host->stats().previous_rq_total_.value();
+        if (lambda == 0) {
+          return 1; // まだtimeslice秒間分の応答時間が収集できていないhostが有るので、全てのhostのweightは1(=ラウンドロビン)
+        }
+        rtt = host->stats().previous_rq_duration_total_.value() / lambda;
       }
-      rtt = host->stats().previous_rq_duration_total_.value() / lambda;
     }
     lambda_sum += lambda;
     // 到着率か平均応答時間が変化していればcとμを再計算。
