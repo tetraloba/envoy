@@ -219,6 +219,11 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
     {
       absl::MutexLock lock(&host->stats().mutex_);
       // timeslice_start_nano_がlatest_timeslice_start_nano - time_slice_size以前のものはcurrent_*から計算して、以降のものはprevious_*から計算する。
+      ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::hostWeight(): host:{}, timeslice_start_nano_:{}, latest_timeslice_start_nano_:{}",
+        host->address()->asString(),
+        host->stats().timeslice_start_nano_.value(),
+        host->stats().latest_timeslice_start_nano_.value()
+      );
       if (host->stats().timeslice_start_nano_.value() <= latest_timeslice_start_nano - timeslice_range_nano) {
         ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::hostWeight(): host:{}, current_rq_total_:{}, current_rq_duration_total_:{}",
           host->address()->asString(),
