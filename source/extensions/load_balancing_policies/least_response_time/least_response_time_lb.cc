@@ -217,7 +217,7 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
     u_int32_t c          = host_specs_[i].c;          // 窓口数
     u_int64_t mu         = host_specs_[i].mu;         // サービス率[requests / timeslice]
     {
-      absl::MutexLock lock(&host->stats().mutex_);
+      // absl::MutexLock lock(&host->stats().mutex_);
       // timeslice_start_nano_がlatest_timeslice_start_nano - time_slice_size以前のものはcurrent_*から計算して、以降のものはprevious_*から計算する。
       ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::hostWeight(): host:{}, timeslice_start_nano_:{}, latest_timeslice_start_nano_:{}",
         host->address()->asString(),

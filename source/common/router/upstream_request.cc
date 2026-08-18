@@ -191,7 +191,7 @@ void UpstreamRequest::cleanUp() {
     response_time_nano.count()
   );
   if (upstream_host_ != nullptr) {
-    absl::MutexLock lock(&upstream_host_->stats().mutex_);
+    // absl::MutexLock lock(&upstream_host_->stats().mutex_);
     auto& stats = upstream_host_->stats();
     const Nanoseconds elapsed_time_nano = end_time_nano - Nanoseconds(stats.timeslice_start_nano_.value());
     if (timeslice_range_nano < elapsed_time_nano) { // timeslice updated // これstart_time_nanoの方で評価すべきかなあ #todo
