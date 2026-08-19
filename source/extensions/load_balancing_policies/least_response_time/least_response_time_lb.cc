@@ -283,7 +283,7 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
     ENVOY_LOG(error, "tetraloba: LeastResponseTimeLoadBalancer::hostWeight(): target host index {} not found!", target_host_index);
   }
   ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::hostWeight(): host_weight of {} is {}", target_host.address()->asString(), host_specs_[target_host_index].weight);
-  return host_specs_[target_host_index].weight;
+  return 1 < host_specs_[target_host_index].weight ? host_specs_[target_host_index].weight : 1;
 }
 
 // Since shouldCreateEdf() forces the use of EDF,
