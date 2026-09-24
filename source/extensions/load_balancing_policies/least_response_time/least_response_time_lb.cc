@@ -72,9 +72,10 @@ double LeastResponseTimeLoadBalancer::calculatePredictedMu(u_int32_t c, double l
     }
   }
 }
-u_int32_t LeastResponseTimeLoadBalancer::calculateCSsthresh(u_int32_t previous_c_ssthresh, double rtt, double predicted_rtt) {
+u_int32_t LeastResponseTimeLoadBalancer::calculateCSsthresh(u_int32_t previous_c, u_int32_t previous_c_ssthresh, double rtt, double predicted_rtt) {
   if (previous_c_ssthresh == 0) {
-    ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculateCSsthresh(): (previous_c_ssthresh={}, rtt={}, predicted_rtt={}) -> CSsthresh={}",
+    ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculateCSsthresh(): (previous_c={}, previous_c_ssthresh={}, rtt={}, predicted_rtt={}) -> CSsthresh={}",
+      previous_c,
       previous_c_ssthresh,
       rtt,
       predicted_rtt,
@@ -83,15 +84,17 @@ u_int32_t LeastResponseTimeLoadBalancer::calculateCSsthresh(u_int32_t previous_c
     return std::numeric_limits<u_int32_t>::max();
   }
   if (rtt > predicted_rtt) {
-    ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculateCSsthresh(): (previous_c_ssthresh={}, rtt={}, predicted_rtt={}) -> CSsthresh={}",
+    ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculateCSsthresh(): (previous_c={}, previous_c_ssthresh={}, rtt={}, predicted_rtt={}) -> CSsthresh={}",
+      previous_c,
       previous_c_ssthresh,
       rtt,
       predicted_rtt,
-      (previous_c_ssthresh > 2 ? previous_c_ssthresh / 2 : 1)
+      (previous_c > 2 ? previous_c / 2 : 1)
     );
-    return previous_c_ssthresh > 2 ? previous_c_ssthresh / 2 : 1;
+    return previous_c > 2 ? previous_c / 2 : 1;
   } else {
-    ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculateCSsthresh(): (previous_c_ssthresh={}, rtt={}, predicted_rtt={}) -> CSsthresh={}",
+    ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculateCSsthresh(): (previous_c={}, previous_c_ssthresh={}, rtt={}, predicted_rtt={}) -> CSsthresh={}",
+      previous_c,
       previous_c_ssthresh,
       rtt,
       predicted_rtt,
@@ -101,14 +104,6 @@ u_int32_t LeastResponseTimeLoadBalancer::calculateCSsthresh(u_int32_t previous_c
   }
 }
 u_int32_t LeastResponseTimeLoadBalancer::calculatePredictedC(u_int32_t previous_c, double rtt, double predicted_rtt, u_int32_t c_ssthresh) {
-  ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculatePredictedC(): (previous_c={}, rtt={}, predicted_rtt={}, c_ssthresh={}) -> c={}",
-    previous_c,
-    rtt,
-    predicted_rtt,
-    c_ssthresh,
-    1
-  );
-  return 2; // TODO:tetraloba
   if (previous_c == 0) {
     ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculatePredictedC(): (previous_c={}, rtt={}, predicted_rtt={}, c_ssthresh={}) -> c={}",
       previous_c,
@@ -120,15 +115,17 @@ u_int32_t LeastResponseTimeLoadBalancer::calculatePredictedC(u_int32_t previous_
     return 1;
   }
   if (previous_c < c_ssthresh) {
+    // slow start phase
     ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculatePredictedC(): (previous_c={}, rtt={}, predicted_rtt={}, c_ssthresh={}) -> c={}",
       previous_c,
       rtt,
       predicted_rtt,
       c_ssthresh,
-      (previous_c == 0 ? 1 : 2 * previous_c)
+      2 * previous_c
     );
-    return previous_c == 0 ? 1 : 2 * previous_c;
+    return 2 * previous_c;
   } else {
+    // congestion avoidance phase
     ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculatePredictedC(): (previous_c={}, rtt={}, predicted_rtt={}, c_ssthresh={}) -> c={}",
       previous_c,
       rtt,
@@ -254,7 +251,7 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
       if (0 < c && 0 < mu) {
         predicted_rtt = calculateAveRtt(lambda, mu, c);
       }
-      c_ssthresh = calculateCSsthresh(c_ssthresh, timeslice_rtt, predicted_rtt);
+      c_ssthresh = calculateCSsthresh(c, c_ssthresh, timeslice_rtt, predicted_rtt);
       c = calculatePredictedC(c, timeslice_rtt, predicted_rtt, c_ssthresh);
       mu = calculatePredictedMu(c, lambda, timeslice_rtt);
       host_specs_[i].lambda = lambda;
