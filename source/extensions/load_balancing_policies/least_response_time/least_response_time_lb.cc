@@ -260,6 +260,7 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
     // cかμが変化していれば重みを再計算 (updateWeights())
     if (c != host_specs_[i].c || mu != host_specs_[i].mu) {
       recalc_weight_required = true;
+      host_specs_[i].c_ssthresh = c_ssthresh;
       host_specs_[i].c = c;
       host_specs_[i].mu = mu;
     }
