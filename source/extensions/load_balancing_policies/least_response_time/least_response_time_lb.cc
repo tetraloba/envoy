@@ -83,7 +83,7 @@ u_int32_t LeastResponseTimeLoadBalancer::calculateCSsthresh(u_int32_t previous_c
     );
     return std::numeric_limits<u_int32_t>::max();
   }
-  if (rtt > predicted_rtt) {
+  if (rtt >= predicted_rtt * 1.1) { // hard coding #TODO
     ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculateCSsthresh(): (previous_c={}, previous_c_ssthresh={}, rtt={}, predicted_rtt={}) -> CSsthresh={}",
       previous_c,
       previous_c_ssthresh,
@@ -126,14 +126,35 @@ u_int32_t LeastResponseTimeLoadBalancer::calculatePredictedC(u_int32_t previous_
     return 2 * previous_c;
   } else {
     // congestion avoidance phase
-    ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculatePredictedC(): (previous_c={}, rtt={}, predicted_rtt={}, c_ssthresh={}) -> c={}",
-      previous_c,
-      rtt,
-      predicted_rtt,
-      c_ssthresh,
-      (rtt > predicted_rtt ? (previous_c > 2 ? previous_c / 2 : 1) : previous_c + 1)
-    );
-    return rtt > predicted_rtt ? (previous_c > 2 ? previous_c / 2 : 1) : previous_c + 1;
+    // if predicted_rtt * (1 - 0.1) <= rtt < predicted_rtt * (1 + 0.1), c is not changed.
+    if (rtt >= predicted_rtt * 1.1) { // hard coding #TODO
+      ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculatePredictedC(): (previous_c={}, rtt={}, predicted_rtt={}, c_ssthresh={}) -> c={}",
+        previous_c,
+        rtt,
+        predicted_rtt,
+        c_ssthresh,
+        previous_c > 2 ? previous_c / 2 : 1
+      );
+      return previous_c > 2 ? previous_c / 2 : 1;
+    } else if (rtt < predicted_rtt * 0.9) { // hard coding #TODO
+      ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculatePredictedC(): (previous_c={}, rtt={}, predicted_rtt={}, c_ssthresh={}) -> c={}",
+        previous_c,
+        rtt,
+        predicted_rtt,
+        c_ssthresh,
+        previous_c + 1
+      );
+      return previous_c + 1;
+    } else {
+      ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculatePredictedC(): (previous_c={}, rtt={}, predicted_rtt={}, c_ssthresh={}) -> c={}",
+        previous_c,
+        rtt,
+        predicted_rtt,
+        c_ssthresh,
+        previous_c
+      );
+      return previous_c;
+    }
   }
 }
 
