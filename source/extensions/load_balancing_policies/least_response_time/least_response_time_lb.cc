@@ -83,7 +83,7 @@ u_int32_t LeastResponseTimeLoadBalancer::calculateCSsthresh(u_int32_t previous_c
     );
     return std::numeric_limits<u_int32_t>::max();
   }
-  if (rtt >= predicted_rtt * 1.1) { // hard coding #TODO
+  if (rtt >= predicted_rtt) {
     ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculateCSsthresh(): (previous_c={}, previous_c_ssthresh={}, rtt={}, predicted_rtt={}) -> CSsthresh={}",
       previous_c,
       previous_c_ssthresh,
