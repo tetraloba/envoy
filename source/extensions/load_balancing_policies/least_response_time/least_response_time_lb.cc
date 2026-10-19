@@ -103,6 +103,11 @@ u_int32_t LeastResponseTimeLoadBalancer::calculateCSsthresh(u_int32_t previous_c
     return previous_c_ssthresh;
   }
 }
+u_int32_t LeastResponseTimeLoadBalancer::calculatePredictedC_safetyFactored(u_int32_t previous_c_safety_factored, double rtt, double predicted_rtt, u_int32_t c_ssthresh) {
+  u_int32_t previous_c_unsafe = static_cast<u_int32_t>(std::ceil(previous_c_safety_factored * 10 / 7.0));
+  u_int32_t c_unsafe = calculatePredictedC(previous_c_unsafe, rtt, predicted_rtt, c_ssthresh);
+  return static_cast<u_int32_t>(std::floor(c_unsafe * 7 / 10.0));
+}
 u_int32_t LeastResponseTimeLoadBalancer::calculatePredictedC(u_int32_t previous_c, double rtt, double predicted_rtt, u_int32_t c_ssthresh) {
   if (previous_c == 0) {
     ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculatePredictedC(): (previous_c={}, rtt={}, predicted_rtt={}, c_ssthresh={}) -> c={}",
@@ -273,7 +278,7 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
         predicted_rtt = calculateAveRtt(lambda, mu, c);
       }
       c_ssthresh = calculateCSsthresh(c, c_ssthresh, timeslice_rtt, predicted_rtt);
-      c = calculatePredictedC(c, timeslice_rtt, predicted_rtt, c_ssthresh);
+      c = calculatePredictedC_safetyFactored(c, timeslice_rtt, predicted_rtt, c_ssthresh);
       mu = calculatePredictedMu(c, lambda, timeslice_rtt);
       host_specs_[i].lambda = lambda;
       host_specs_[i].rtt = rtt;
