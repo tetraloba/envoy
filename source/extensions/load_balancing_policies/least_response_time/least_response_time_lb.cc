@@ -274,7 +274,9 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
       }
       c_ssthresh = calculateCSsthresh(c, c_ssthresh, timeslice_rtt, predicted_rtt);
       c = calculatePredictedC(c, timeslice_rtt, predicted_rtt, c_ssthresh);
-      mu = calculatePredictedMu(c, lambda, timeslice_rtt);
+      u_int32_t c_safe_factored = std::max(1, static_cast<u_int32_t>(c * 0.7)); // hard coding #TODO
+      ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::hostWeight(): host:{}, c_ssthresh:{}, c:{}, c_safe_factored:{}", host->address()->asString(), c_ssthresh, c, c_safe_factored);
+      mu = calculatePredictedMu(c_safe_factored, lambda, timeslice_rtt);
       host_specs_[i].lambda = lambda;
       host_specs_[i].rtt = rtt;
     }
