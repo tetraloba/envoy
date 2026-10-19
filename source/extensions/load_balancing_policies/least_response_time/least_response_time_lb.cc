@@ -106,7 +106,7 @@ u_int32_t LeastResponseTimeLoadBalancer::calculateCSsthresh(u_int32_t previous_c
 u_int32_t LeastResponseTimeLoadBalancer::calculatePredictedC_safetyFactored(u_int32_t previous_c_safety_factored, double rtt, double predicted_rtt, u_int32_t c_ssthresh) {
   u_int32_t previous_c_unsafe = static_cast<u_int32_t>(std::ceil(previous_c_safety_factored * 10 / 7.0));
   u_int32_t c_unsafe = calculatePredictedC(previous_c_unsafe, rtt, predicted_rtt, c_ssthresh);
-  u_int32_t c_safety_factored = static_cast<u_int32_t>(std::ceil(c_unsafe * 7 / 10.0));
+  u_int32_t c_safety_factored = static_cast<u_int32_t>(std::ceil(c_unsafe * 10 / 7.0));
   return c_safety_factored == 0 ? 1 : c_safety_factored;
 }
 u_int32_t LeastResponseTimeLoadBalancer::calculatePredictedC(u_int32_t previous_c, double rtt, double predicted_rtt, u_int32_t c_ssthresh) {
