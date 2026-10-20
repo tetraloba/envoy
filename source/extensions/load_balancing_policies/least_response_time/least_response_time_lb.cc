@@ -158,6 +158,9 @@ u_int32_t LeastResponseTimeLoadBalancer::calculatePredictedC(u_int32_t previous_
     }
   }
 }
+u_int32_t LeastResponseTimeLoadBalancer::getSafeC(u_int32_t c) {
+  return std::max(UINT32_C(1), static_cast<u_int32_t>(c * 0.7)); // hard coding #TODO
+}
 
 // std::pair<double, double> LeastResponseTimeLoadBalancer::calculateWeight(u_int32_t c1, u_int64_t mu1, u_int32_t c2, u_int64_t mu2) const {
   
@@ -176,14 +179,14 @@ void LeastResponseTimeLoadBalancer::updateWeights(const u_int64_t lambda, const 
   std::priority_queue<node, std::vector<node>, std::greater<node>> host_expected_rtts; // (rtt, host_index)
   for (u_int32_t i = 0; i < host_specs_.size(); i++) {
     host_specs_[i].weight = 0;
-    const double expected_rtt = calculateAveRtt(lambda_per_weight, host_specs_[i].mu, host_specs_[i].c); // weightが1の場合の平均応答時間
+    const double expected_rtt = calculateAveRtt(lambda_per_weight, host_specs_[i].mu, getSafeC(host_specs_[i].c)); // weightが1の場合の平均応答時間
     host_expected_rtts.push(std::make_pair(expected_rtt, i));
   }
   for (u_int32_t w = 0; w < weight_sum; w++) {
     auto [rtt, host_index] = host_expected_rtts.top(); host_expected_rtts.pop();
     ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::updateWeights(): rtt={}, host_index={}", rtt, host_index);
     host_specs_[host_index].weight++;
-    const double expected_rtt = calculateAveRtt((host_specs_[host_index].weight + 1) * lambda_per_weight, host_specs_[host_index].mu, host_specs_[host_index].c); // weightを1増やした場合の応答時間
+    const double expected_rtt = calculateAveRtt((host_specs_[host_index].weight + 1) * lambda_per_weight, host_specs_[host_index].mu, getSafeC(host_specs_[host_index].c)); // weightを1増やした場合の応答時間
     host_expected_rtts.push(std::make_pair(expected_rtt, host_index));
   }
 
@@ -195,7 +198,6 @@ void LeastResponseTimeLoadBalancer::updateWeights(const u_int64_t lambda, const 
   weights_str.back() = ']';
   ENVOY_LOG(info, "tetraloba: LeastResponseTimeLoadBalancer::updateWeights(): weights: {} ", weights_str);
 }
-
 double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const {
   ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::hostWeight() (for {}) called!", target_host.address()->asString());
   // TODO:tetraloba
@@ -275,9 +277,8 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
       }
       c_ssthresh = calculateCSsthresh(c, c_ssthresh, timeslice_rtt, predicted_rtt);
       c = calculatePredictedC(c, timeslice_rtt, predicted_rtt, c_ssthresh);
-      u_int32_t c_safety_factored = std::max(UINT32_C(1), static_cast<u_int32_t>(c * 0.7)); // hard coding #TODO
-      ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::hostWeight(): host:{}, c_ssthresh:{}, c:{}, c_safety_factored:{}", host->address()->asString(), c_ssthresh, c, c_safety_factored);
-      mu = calculatePredictedMu(c_safety_factored, lambda, timeslice_rtt);
+      ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::hostWeight(): host:{}, c_ssthresh:{}, c:{}, getSafeC(c):{}", host->address()->asString(), c_ssthresh, c, getSafeC(c));
+      mu = calculatePredictedMu(getSafeC(c), lambda, timeslice_rtt);
       host_specs_[i].lambda = lambda;
       host_specs_[i].rtt = rtt;
     }
