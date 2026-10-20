@@ -9,6 +9,7 @@ struct LBHostSpec {
   u_int32_t c = 0;
   u_int32_t c_ssthresh = 0;
   u_int64_t mu = 0;
+  u_int64_t safe_mu = 0;
   u_int64_t lambda = 0;
   u_int64_t rtt = 0;
   u_int64_t weight = 0;

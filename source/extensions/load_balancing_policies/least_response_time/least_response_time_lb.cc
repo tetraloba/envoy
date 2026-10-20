@@ -179,14 +179,14 @@ void LeastResponseTimeLoadBalancer::updateWeights(const u_int64_t lambda, const 
   std::priority_queue<node, std::vector<node>, std::greater<node>> host_expected_rtts; // (rtt, host_index)
   for (u_int32_t i = 0; i < host_specs_.size(); i++) {
     host_specs_[i].weight = 0;
-    const double expected_rtt = calculateAveRtt(lambda_per_weight, host_specs_[i].mu, getSafeC(host_specs_[i].c)); // weightが1の場合の平均応答時間
+    const double expected_rtt = calculateAveRtt(lambda_per_weight, host_specs_[i].safe_mu, getSafeC(host_specs_[i].c)); // weightが1の場合の平均応答時間
     host_expected_rtts.push(std::make_pair(expected_rtt, i));
   }
   for (u_int32_t w = 0; w < weight_sum; w++) {
     auto [rtt, host_index] = host_expected_rtts.top(); host_expected_rtts.pop();
     ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::updateWeights(): rtt={}, host_index={}", rtt, host_index);
     host_specs_[host_index].weight++;
-    const double expected_rtt = calculateAveRtt((host_specs_[host_index].weight + 1) * lambda_per_weight, host_specs_[host_index].mu, getSafeC(host_specs_[host_index].c)); // weightを1増やした場合の応答時間
+    const double expected_rtt = calculateAveRtt((host_specs_[host_index].weight + 1) * lambda_per_weight, host_specs_[host_index].safe_mu, getSafeC(host_specs_[host_index].c)); // weightを1増やした場合の応答時間
     host_expected_rtts.push(std::make_pair(expected_rtt, host_index));
   }
 
@@ -237,6 +237,7 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
     u_int32_t c_ssthresh = host_specs_[i].c_ssthresh; // cのスロースタート閾値
     u_int32_t c          = host_specs_[i].c;          // 窓口数
     u_int64_t mu         = host_specs_[i].mu;         // サービス率[requests / timeslice]
+    u_int64_t safe_mu    = host_specs_[i].safe_mu;    // 安全係数をかけたcによるサービス率[requests / timeslice]
     {
       absl::MutexLock lock(&host->stats().mutex_);
       // timeslice_start_nano_がlatest_timeslice_start_nano - time_slice_size以前のものはcurrent_*から計算して、以降のものはprevious_*から計算する。
@@ -273,12 +274,13 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
       double timeslice_rtt = static_cast<double>(rtt) / timeslice_range_nano;
       double predicted_rtt = timeslice_rtt;
       if (0 < c && 0 < mu) {
-        predicted_rtt = calculateAveRtt(lambda, mu, c);
+        predicted_rtt = calculateAveRtt(lambda, mu, c); // unsafe_mu
       }
       c_ssthresh = calculateCSsthresh(c, c_ssthresh, timeslice_rtt, predicted_rtt);
       c = calculatePredictedC(c, timeslice_rtt, predicted_rtt, c_ssthresh);
       ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::hostWeight(): host:{}, c_ssthresh:{}, c:{}, getSafeC(c):{}", host->address()->asString(), c_ssthresh, c, getSafeC(c));
-      mu = calculatePredictedMu(getSafeC(c), lambda, timeslice_rtt);
+      mu = calculatePredictedMu(c, lambda, timeslice_rtt);
+      safe_mu = calculatePredictedMu(getSafeC(c), lambda, timeslice_rtt);
       host_specs_[i].lambda = lambda;
       host_specs_[i].rtt = rtt;
     }
@@ -288,6 +290,7 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
       host_specs_[i].c_ssthresh = c_ssthresh;
       host_specs_[i].c = c;
       host_specs_[i].mu = mu;
+      host_specs_[i].safe_mu = safe_mu;
     }
 
     if (host->address()->asString() == target_host.address()->asString()) {
