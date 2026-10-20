@@ -84,7 +84,7 @@ u_int32_t LeastResponseTimeLoadBalancer::calculateCSsthresh(u_int32_t previous_c
     );
     return std::numeric_limits<u_int32_t>::max();
   }
-  if (previous_lambda < lambda && predicted_rtt < rtt || lambda < previous_lambda && rtt < predicted_rtt) { // c過大
+  if ((previous_lambda < lambda && predicted_rtt < rtt) || (lambda < previous_lambda && rtt < predicted_rtt)) { // c過大
     ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculateCSsthresh(): (previous_c={}, previous_c_ssthresh={}, rtt={}, predicted_rtt={}) -> CSsthresh={}",
       previous_c,
       previous_c_ssthresh,
@@ -129,7 +129,7 @@ u_int32_t LeastResponseTimeLoadBalancer::calculatePredictedC(u_int32_t previous_
     // congestion avoidance phase
     // if predicted_rtt * (1 - 0.1) <= rtt < predicted_rtt * (1 + 0.1), c will not be changed.
     const double RTT_TOLERANCE = 0.1; // hard coding #TODO
-    if (previous_lambda < lambda && predicted_rtt * (1 + RTT_TOLERANCE) <= rtt || lambda < previous_lambda && rtt < predicted_rtt * (1 - RTT_TOLERANCE)) { // c過大
+    if ((previous_lambda < lambda && predicted_rtt * (1 + RTT_TOLERANCE) <= rtt) || (lambda < previous_lambda && rtt < predicted_rtt * (1 - RTT_TOLERANCE))) { // c過大
       ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculatePredictedC(): (previous_c={}, rtt={}, predicted_rtt={}, c_ssthresh={}) -> c={}",
         previous_c,
         rtt,
@@ -138,7 +138,7 @@ u_int32_t LeastResponseTimeLoadBalancer::calculatePredictedC(u_int32_t previous_
         previous_c > 2 ? previous_c / 2 : 1
       );
       return previous_c > 2 ? previous_c / 2 : 1;
-    } else if (previous_lambda < lambda && rtt < predicted_rtt * (1 - RTT_TOLERANCE) || lambda < previous_lambda && predicted_rtt * (1 + RTT_TOLERANCE) <= rtt) { // c過小
+    } else if ((previous_lambda < lambda && rtt < predicted_rtt * (1 - RTT_TOLERANCE)) || (lambda < previous_lambda && predicted_rtt * (1 + RTT_TOLERANCE) <= rtt)) { // c過小
       ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculatePredictedC(): (previous_c={}, rtt={}, predicted_rtt={}, c_ssthresh={}) -> c={}",
         previous_c,
         rtt,
