@@ -110,8 +110,8 @@ private:
   * @return 応答時間[timeslice]
   */
   static double calculateAveRtt(double lambda, double mu, u_int32_t c);
-  static u_int32_t calculateCSsthresh(u_int32_t previous_c, u_int32_t previous_c_ssthresh, double rtt, double predicted_rtt);
-  static u_int32_t calculatePredictedC(u_int32_t previous_c, double rtt, double predicted_rtt, u_int32_t c_ssthresh);
+  static u_int32_t calculateCSsthresh(u_int32_t previous_c, u_int32_t previous_c_ssthresh, double previous_lambda, double lambda, double rtt, double predicted_rtt);
+  static u_int32_t calculatePredictedC(u_int32_t previous_c, double previous_lambda, double lambda, double rtt, double predicted_rtt, u_int32_t c_ssthresh);
   static u_int32_t getSafeC(u_int32_t c);
   static double calculatePredictedMu(u_int32_t c, double lambda, double average_rtt);
   void updateWeights(const u_int64_t lambda_sum, const std::vector<HostSharedPtr>& hosts) const;

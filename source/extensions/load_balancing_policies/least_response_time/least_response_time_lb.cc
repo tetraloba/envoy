@@ -73,7 +73,7 @@ double LeastResponseTimeLoadBalancer::calculatePredictedMu(u_int32_t c, double l
     }
   }
 }
-u_int32_t LeastResponseTimeLoadBalancer::calculateCSsthresh(u_int32_t previous_c, u_int32_t previous_c_ssthresh, double rtt, double predicted_rtt) {
+u_int32_t LeastResponseTimeLoadBalancer::calculateCSsthresh(u_int32_t previous_c, u_int32_t previous_c_ssthresh, double previous_lambda, double lambda, double rtt, double predicted_rtt) {
   if (previous_c_ssthresh == 0) {
     ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculateCSsthresh(): (previous_c={}, previous_c_ssthresh={}, rtt={}, predicted_rtt={}) -> CSsthresh={}",
       previous_c,
@@ -84,7 +84,7 @@ u_int32_t LeastResponseTimeLoadBalancer::calculateCSsthresh(u_int32_t previous_c
     );
     return std::numeric_limits<u_int32_t>::max();
   }
-  if (rtt >= predicted_rtt) {
+  if (previous_lambda < lambda && predicted_rtt < rtt || lambda < previous_lambda && rtt < predicted_rtt) { // c過大
     ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculateCSsthresh(): (previous_c={}, previous_c_ssthresh={}, rtt={}, predicted_rtt={}) -> CSsthresh={}",
       previous_c,
       previous_c_ssthresh,
@@ -104,7 +104,7 @@ u_int32_t LeastResponseTimeLoadBalancer::calculateCSsthresh(u_int32_t previous_c
     return previous_c_ssthresh;
   }
 }
-u_int32_t LeastResponseTimeLoadBalancer::calculatePredictedC(u_int32_t previous_c, double rtt, double predicted_rtt, u_int32_t c_ssthresh) {
+u_int32_t LeastResponseTimeLoadBalancer::calculatePredictedC(u_int32_t previous_c, double previous_lambda, double lambda, double rtt, double predicted_rtt, u_int32_t c_ssthresh) {
   if (previous_c == 0) {
     ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculatePredictedC(): (previous_c={}, rtt={}, predicted_rtt={}, c_ssthresh={}) -> c={}",
       previous_c,
@@ -127,8 +127,9 @@ u_int32_t LeastResponseTimeLoadBalancer::calculatePredictedC(u_int32_t previous_
     return 2 * previous_c;
   } else {
     // congestion avoidance phase
-    // if predicted_rtt * (1 - 0.1) <= rtt < predicted_rtt * (1 + 0.1), c is not changed.
-    if (rtt >= predicted_rtt * 1.1) { // hard coding #TODO
+    // if predicted_rtt * (1 - 0.1) <= rtt < predicted_rtt * (1 + 0.1), c will not be changed.
+    const double RTT_TOLERANCE = 0.1; // hard coding #TODO
+    if (previous_lambda < lambda && predicted_rtt * (1 + RTT_TOLERANCE) <= rtt || lambda < previous_lambda && rtt < predicted_rtt * (1 - RTT_TOLERANCE)) { // c過大
       ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculatePredictedC(): (previous_c={}, rtt={}, predicted_rtt={}, c_ssthresh={}) -> c={}",
         previous_c,
         rtt,
@@ -137,7 +138,7 @@ u_int32_t LeastResponseTimeLoadBalancer::calculatePredictedC(u_int32_t previous_
         previous_c > 2 ? previous_c / 2 : 1
       );
       return previous_c > 2 ? previous_c / 2 : 1;
-    } else if (rtt < predicted_rtt * 0.9) { // hard coding #TODO
+    } else if (previous_lambda < lambda && rtt < predicted_rtt * (1 - RTT_TOLERANCE) || lambda < previous_lambda && predicted_rtt * (1 + RTT_TOLERANCE) <= rtt) { // c過小
       ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculatePredictedC(): (previous_c={}, rtt={}, predicted_rtt={}, c_ssthresh={}) -> c={}",
         previous_c,
         rtt,
@@ -146,7 +147,7 @@ u_int32_t LeastResponseTimeLoadBalancer::calculatePredictedC(u_int32_t previous_
         previous_c + 1
       );
       return previous_c + 1;
-    } else {
+    } else { // c適正(平均応答時間の誤差が許容範囲内)
       ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::calculatePredictedC(): (previous_c={}, rtt={}, predicted_rtt={}, c_ssthresh={}) -> c={}",
         previous_c,
         rtt,
@@ -232,12 +233,13 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
   bool recalc_weight_required = false;
   u_int64_t lambda_sum = 0;
   for (const auto& host : hosts) {
-    u_int64_t lambda     = host_specs_[i].lambda;     // 到着率[requests / timeslice]
-    u_int64_t rtt        = host_specs_[i].rtt;        // 平均応答時間[nanoseconds]
-    u_int32_t c_ssthresh = host_specs_[i].c_ssthresh; // cのスロースタート閾値
-    u_int32_t c          = host_specs_[i].c;          // 窓口数
-    u_int64_t mu         = host_specs_[i].mu;         // サービス率[requests / timeslice]
-    u_int64_t safe_mu    = host_specs_[i].safe_mu;    // 安全係数をかけたcによるサービス率[requests / timeslice]
+    u_int64_t previous_lambda = host_specs_[i].lambda;     // 到着率[requests / timeslice]
+    u_int64_t rtt             = host_specs_[i].rtt;        // 平均応答時間[nanoseconds]
+    u_int32_t c_ssthresh      = host_specs_[i].c_ssthresh; // cのスロースタート閾値
+    u_int32_t c               = host_specs_[i].c;          // 窓口数
+    u_int64_t mu              = host_specs_[i].mu;         // サービス率[requests / timeslice]
+    u_int64_t safe_mu         = host_specs_[i].safe_mu;    // 安全係数をかけたcによるサービス率[requests / timeslice]
+    u_int64_t lambda = 0; // 到着率[requests / timeslice]
     {
       absl::MutexLock lock(&host->stats().mutex_);
       // timeslice_start_nano_がlatest_timeslice_start_nano - time_slice_size以前のものはcurrent_*から計算して、以降のものはprevious_*から計算する。
@@ -276,8 +278,8 @@ double LeastResponseTimeLoadBalancer::hostWeight(const Host& target_host) const 
       if (0 < c && 0 < mu) {
         predicted_rtt = calculateAveRtt(lambda, mu, c); // unsafe_mu
       }
-      c_ssthresh = calculateCSsthresh(c, c_ssthresh, timeslice_rtt, predicted_rtt);
-      c = calculatePredictedC(c, timeslice_rtt, predicted_rtt, c_ssthresh);
+      c_ssthresh = calculateCSsthresh(c, c_ssthresh, previous_lambda, lambda, timeslice_rtt, predicted_rtt);
+      c = calculatePredictedC(c, previous_lambda, lambda, timeslice_rtt, predicted_rtt, c_ssthresh);
       ENVOY_LOG(debug, "tetraloba: LeastResponseTimeLoadBalancer::hostWeight(): host:{}, c_ssthresh:{}, c:{}, getSafeC(c):{}", host->address()->asString(), c_ssthresh, c, getSafeC(c));
       mu = calculatePredictedMu(c, lambda, timeslice_rtt);
       safe_mu = calculatePredictedMu(getSafeC(c), lambda, timeslice_rtt);
