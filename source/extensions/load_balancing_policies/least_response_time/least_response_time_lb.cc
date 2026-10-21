@@ -160,7 +160,8 @@ u_int32_t LeastResponseTimeLoadBalancer::calculatePredictedC(u_int32_t previous_
   }
 }
 u_int32_t LeastResponseTimeLoadBalancer::getSafeC(u_int32_t c) {
-  return std::max(UINT32_C(1), static_cast<u_int32_t>(c * 0.7)); // hard coding #TODO
+  const double C_SAFETY_FACTOR = 1.0; // hard coding #TODO
+  return std::max(UINT32_C(1), static_cast<u_int32_t>(c * C_SAFETY_FACTOR));
 }
 
 // std::pair<double, double> LeastResponseTimeLoadBalancer::calculateWeight(u_int32_t c1, u_int64_t mu1, u_int32_t c2, u_int64_t mu2) const {
